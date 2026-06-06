@@ -13,6 +13,7 @@ struct CustomTaskListView: View {
     @State private var dragTranslation: CGFloat = 0
     @State private var dragSourceIndex: Int?
     @State private var dragTargetIndex: Int?
+    @State private var isSettlingReorder = false
     @State private var rowFrames: [UUID: CGRect] = [:]
     @State private var dragStartHaptic = UIImpactFeedbackGenerator(style: .medium)
     @State private var moveHaptic = UIImpactFeedbackGenerator(style: .soft)
@@ -30,7 +31,8 @@ struct CustomTaskListView: View {
                         filter: filter,
                         showDragHandle: allowsReorder,
                         isDragging: draggingTaskID == task.id,
-                        reorderOffset: dragTranslation,
+                        isSettling: isSettlingReorder,
+                        reorderOffset: draggingTaskID == task.id ? dragTranslation : 0,
                         reorderShift: rowShift(at: index),
                         listCoordinateSpace: listCoordinateSpace,
                         onTap: { onEdit(task) },
@@ -140,12 +142,16 @@ struct CustomTaskListView: View {
 
         guard
             let source = dragSourceIndex,
-            let target = dragTargetIndex,
-            source != target
+            let target = dragTargetIndex
         else {
-            withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
-                resetReorderState()
-            }
+            settleAndReset(reorderedTasks: nil)
+            return
+        }
+
+        let settleTranslation = CGFloat(target - source) * rowDisplacement(for: source)
+
+        guard source != target else {
+            settleAndReset(reorderedTasks: nil, settleTranslation: 0)
             return
         }
 
@@ -155,9 +161,29 @@ struct CustomTaskListView: View {
             toOffset: target > source ? target + 1 : target
         )
 
+        settleAndReset(reorderedTasks: ordered, settleTranslation: settleTranslation)
+    }
+
+    private func rowDisplacement(for sourceIndex: Int) -> CGFloat {
+        guard let frame = rowFrames[tasks[sourceIndex].id] else { return 0 }
+        return frame.height + rowSpacing
+    }
+
+    private func settleAndReset(reorderedTasks: [Task]?, settleTranslation: CGFloat = 0) {
+        isSettlingReorder = true
+
         withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
-            TaskStore.applySortOrder(to: ordered)
-            resetReorderState()
+            dragTranslation = settleTranslation
+        } completion: {
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) {
+                if let reorderedTasks {
+                    TaskStore.applySortOrder(to: reorderedTasks)
+                }
+                resetReorderState()
+                isSettlingReorder = false
+            }
         }
     }
 

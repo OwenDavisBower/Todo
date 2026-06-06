@@ -5,6 +5,7 @@ struct TaskRowView: View {
     var filter: TaskFilter = .active
     var showDragHandle: Bool = true
     var isDragging: Bool = false
+    var isSettling: Bool = false
     var reorderOffset: CGFloat = 0
     var reorderShift: CGFloat = 0
     var listCoordinateSpace: String = "taskList"
@@ -29,20 +30,20 @@ struct TaskRowView: View {
 
             cardContent
                 .offset(x: horizontalOffset)
-                .offset(y: isDragging ? reorderOffset : reorderShift)
-                .scaleEffect(isDragging ? 1.03 : 1)
+                .offset(y: reorderOffset + reorderShift)
+                .scaleEffect(isDragging && !isSettling ? 1.03 : 1)
                 .shadow(
-                    color: AppTheme.ink.opacity(isDragging ? 0.12 : 0),
-                    radius: isDragging ? 12 : 0,
-                    y: isDragging ? 6 : 0
+                    color: AppTheme.ink.opacity(isDragging && !isSettling ? 0.12 : 0),
+                    radius: isDragging && !isSettling ? 12 : 0,
+                    y: isDragging && !isSettling ? 6 : 0
                 )
         }
         .contentShape(Rectangle())
         .simultaneousGesture(horizontalDragGesture)
-        .animation(isDragging ? nil : .spring(response: 0.32, dampingFraction: 0.86), value: isDragging)
-        .animation(isDragging ? nil : .interactiveSpring(response: 0.28, dampingFraction: 0.86), value: reorderShift)
+        .animation(isDragging && !isSettling ? nil : .spring(response: 0.32, dampingFraction: 0.86), value: isDragging)
+        .animation(isDragging && !isSettling ? nil : .interactiveSpring(response: 0.28, dampingFraction: 0.86), value: reorderShift)
         .transaction { transaction in
-            if isDragging {
+            if isDragging && !isSettling {
                 transaction.animation = nil
             }
         }
