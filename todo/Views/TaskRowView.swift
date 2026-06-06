@@ -58,6 +58,8 @@ struct TaskRowView: View {
         HStack(spacing: 14) {
             if showDragHandle {
                 reorderHandle
+            } else {
+                leadingSpacer
             }
 
             HStack(spacing: 12) {
@@ -73,8 +75,12 @@ struct TaskRowView: View {
             }
             .contentShape(Rectangle())
             .onTapGesture(perform: onTap)
+
+            if filter == .done {
+                restoreButton
+            }
         }
-        .padding(.leading, showDragHandle ? 14 : 18)
+        .padding(.leading, 14)
         .padding(.trailing, 18)
         .padding(.vertical, 14)
         .background {
@@ -122,6 +128,22 @@ struct TaskRowView: View {
                 }
         }
         .opacity(horizontalOffset < 0 ? progress : 0)
+    }
+
+    private var leadingSpacer: some View {
+        Color.clear
+            .frame(width: 24, height: 36)
+            .accessibilityHidden(true)
+    }
+
+    private var restoreButton: some View {
+        Button(action: onRestore) {
+            Image(systemName: "arrow.uturn.backward.circle.fill")
+                .font(.title2)
+                .foregroundStyle(AppTheme.sage)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Restore to active")
     }
 
     private var reorderHandle: some View {
@@ -222,7 +244,8 @@ struct TaskRowView: View {
                 task: Task(title: "Call dentist", sortOrder: 1),
                 filter: .done,
                 showDragHandle: false,
-                onTap: {}
+                onTap: {},
+                onRestore: {}
             )
         }
         .padding(20)
