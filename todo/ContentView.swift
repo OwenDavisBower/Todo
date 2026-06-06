@@ -79,53 +79,30 @@ struct ContentView: View {
             EmptyStateView(filter: filter)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
-            List {
-                ForEach(tasks) { task in
-                    TaskRowView(task: task, showDragHandle: allowsReorder) {
-                        editingTask = task
+            CustomTaskListView(
+                tasks: tasks,
+                filter: filter,
+                allowsReorder: allowsReorder,
+                onEdit: { editingTask = $0 },
+                onComplete: { task in
+                    withAnimation {
+                        TaskStore.complete(task)
                     }
-                    .listRowInsets(EdgeInsets(top: 14, leading: 20, bottom: 14, trailing: 20))
-                    .listRowSeparatorTint(AppTheme.divider)
-                    .listRowBackground(AppTheme.background)
-                    .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                        if filter == .active {
-                            Button {
-                                withAnimation {
-                                    TaskStore.complete(task)
-                                }
-                            } label: {
-                                Label("Done", systemImage: "checkmark")
-                            }
-                            .tint(AppTheme.sage)
-                        } else {
-                            Button {
-                                withAnimation {
-                                    TaskStore.uncomplete(task, in: modelContext)
-                                }
-                            } label: {
-                                Label("Restore", systemImage: "arrow.uturn.backward")
-                            }
-                            .tint(AppTheme.mist)
-                        }
+                },
+                onRestore: { task in
+                    withAnimation {
+                        TaskStore.uncomplete(task, in: modelContext)
                     }
-                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                        Button(role: .destructive) {
-                            withAnimation {
-                                modelContext.delete(task)
-                            }
-                        } label: {
-                            Label("Delete", systemImage: "trash")
-                        }
-                        .tint(AppTheme.ink)
+                },
+                onDelete: { task in
+                    withAnimation {
+                        modelContext.delete(task)
                     }
-                }
-                .onMove { source, destination in
-                    guard allowsReorder else { return }
+                },
+                onReorder: { source, destination in
                     TaskStore.reorder(tasks, from: source, to: destination)
                 }
-            }
-            .listStyle(.plain)
-            .scrollContentBackground(.hidden)
+            )
         }
     }
 
