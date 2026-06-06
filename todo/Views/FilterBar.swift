@@ -29,7 +29,7 @@ struct FilterBar: View {
                 SettingsView()
             } label: {
                 Image(systemName: "gearshape")
-                    .font(.caption.weight(.light))
+                    .font(.title3)
                     .foregroundStyle(AppTheme.sage)
             }
             .accessibilityLabel("Settings")
