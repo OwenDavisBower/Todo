@@ -51,7 +51,7 @@ enum TaskFilter: String, CaseIterable, Identifiable {
 
     var emptyMessage: String {
         switch self {
-        case .active: "Type below to add your first task."
+        case .active: "Tap + to add your first task."
         case .done: "Completed tasks will appear here."
         }
     }

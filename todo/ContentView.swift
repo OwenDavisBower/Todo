@@ -14,7 +14,8 @@ struct ContentView: View {
     ) private var doneTasks: [Task]
 
     @State private var filter: TaskFilter = .active
-    @State private var isAddSheetExpanded = false
+    @State private var isShowingAddRow = false
+    @State private var shouldAutofocusAddRow = false
     @State private var editingTask: Task?
 
     var body: some View {
@@ -30,27 +31,17 @@ struct ContentView: View {
                         taskList(tasks: doneTasks, allowsReorder: false)
                     }
                 }
-                .overlay {
-                    if isAddSheetExpanded {
-                        AppTheme.ink.opacity(0.06)
-                            .ignoresSafeArea()
-                            .onTapGesture {
-                                isAddSheetExpanded = false
-                            }
-                    }
-                }
             }
             .themedBackground()
             .toolbar(.hidden, for: .navigationBar)
-            .safeAreaInset(edge: .bottom, spacing: 0) {
-                if filter == .active {
-                    AddTaskBottomSheet(isExpanded: $isAddSheetExpanded) { title, dueDate in
-                        _ = TaskStore.addTask(title: title, dueDate: dueDate, in: modelContext)
-                    }
+            .overlay(alignment: .bottomTrailing) {
+                if filter == .active, !isShowingAddRow {
+                    addTaskButton
                 }
             }
             .onChange(of: filter) { _, _ in
-                isAddSheetExpanded = false
+                isShowingAddRow = false
+                shouldAutofocusAddRow = false
             }
             .sheet(item: $editingTask) { task in
                 TaskEditSheet(task: task, navigationTitle: "Edit Task") { title, dueDate in
@@ -60,9 +51,30 @@ struct ContentView: View {
         }
     }
 
+    private var addTaskButton: some View {
+        Button {
+            shouldAutofocusAddRow = true
+            isShowingAddRow = true
+        } label: {
+            Image(systemName: "plus")
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(AppTheme.blush)
+                .frame(width: 56, height: 56)
+                .background {
+                    Circle()
+                        .fill(AppTheme.sage)
+                        .shadow(color: AppTheme.ink.opacity(0.12), radius: 12, y: 4)
+                }
+        }
+        .buttonStyle(.plain)
+        .padding(.trailing, 20)
+        .padding(.bottom, 20)
+        .accessibilityLabel("Add task")
+    }
+
     @ViewBuilder
     private func taskList(tasks: [Task], allowsReorder: Bool) -> some View {
-        if tasks.isEmpty {
+        if tasks.isEmpty, !isShowingAddRow {
             EmptyStateView(filter: filter)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
@@ -70,6 +82,8 @@ struct ContentView: View {
                 tasks: tasks,
                 filter: filter,
                 allowsReorder: allowsReorder,
+                showAddRow: filter == .active && isShowingAddRow,
+                autofocusAddRow: shouldAutofocusAddRow,
                 onEdit: { editingTask = $0 },
                 onComplete: { task in
                     TaskStore.complete(task)
@@ -79,6 +93,10 @@ struct ContentView: View {
                 },
                 onDelete: { task in
                     TaskStore.delete(task, in: modelContext)
+                },
+                onAddTask: { title in
+                    _ = TaskStore.addTask(title: title, in: modelContext)
+                    shouldAutofocusAddRow = false
                 }
             )
         }

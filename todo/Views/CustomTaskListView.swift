@@ -4,10 +4,13 @@ struct CustomTaskListView: View {
     let tasks: [Task]
     let filter: TaskFilter
     let allowsReorder: Bool
+    var showAddRow = false
+    var autofocusAddRow = false
     let onEdit: (Task) -> Void
     let onComplete: (Task) -> Void
     let onRestore: (Task) -> Void
     let onDelete: (Task) -> Void
+    let onAddTask: (String) -> Void
 
     @State private var draggingTaskID: UUID?
     @State private var dragTranslation: CGFloat = 0
@@ -61,6 +64,14 @@ struct CustomTaskListView: View {
                         }
                     }
                     .zIndex(reorderZIndex(for: index, task: task))
+                }
+
+                if showAddRow {
+                    if !listTasks.isEmpty {
+                        Color.clear.frame(height: rowSpacing)
+                    }
+
+                    AddTaskRowView(autofocus: autofocusAddRow, onSubmit: onAddTask)
                 }
             }
             .padding(.horizontal, 20)
