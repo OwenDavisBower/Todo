@@ -15,6 +15,7 @@ struct CustomTaskListView: View {
     @State private var dragTargetIndex: Int?
     @State private var isSettlingReorder = false
     @State private var frozenTasks: [Task]?
+    @State private var isRemovingTask = false
     @State private var rowFrames: [UUID: CGRect] = [:]
     @State private var dragStartHaptic = UIImpactFeedbackGenerator(style: .medium)
     @State private var moveHaptic = UIImpactFeedbackGenerator(style: .soft)
@@ -39,9 +40,10 @@ struct CustomTaskListView: View {
                         reorderShift: rowShift(at: index),
                         listCoordinateSpace: listCoordinateSpace,
                         onTap: { onEdit(task) },
-                        onComplete: { onComplete(task) },
-                        onRestore: { onRestore(task) },
-                        onDelete: { onDelete(task) },
+                        onComplete: { commitRemoval { onComplete(task) } },
+                        onRestore: { commitRemoval { onRestore(task) } },
+                        onDelete: { commitRemoval { onDelete(task) } },
+                        onCollapseStarted: { freezeForRemoval() },
                         onReorderDragChanged: { translation in
                             handleReorderDrag(task: task, at: index, translation: translation)
                         },
@@ -69,7 +71,7 @@ struct CustomTaskListView: View {
         .onChange(of: tasks.map(\.id)) { _, newIDs in
             if let frozenTasks, frozenTasks.map(\.id) == newIDs {
                 self.frozenTasks = nil
-            } else if draggingTaskID == nil, !isSettlingReorder {
+            } else if draggingTaskID == nil, !isSettlingReorder, !isRemovingTask {
                 frozenTasks = nil
             }
         }
@@ -203,6 +205,22 @@ struct CustomTaskListView: View {
                 resetReorderState()
                 isSettlingReorder = false
             }
+        }
+    }
+
+    private func freezeForRemoval() {
+        guard frozenTasks == nil else { return }
+        frozenTasks = tasks
+        isRemovingTask = true
+    }
+
+    private func commitRemoval(action: () -> Void) {
+        action()
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            frozenTasks = nil
+            isRemovingTask = false
         }
     }
 

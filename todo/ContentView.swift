@@ -74,9 +74,7 @@ struct ContentView: View {
                 allowsReorder: allowsReorder,
                 onEdit: { editingTask = $0 },
                 onComplete: { task in
-                    withAnimation(.spring(response: 0.38, dampingFraction: 0.86)) {
-                        TaskStore.complete(task)
-                    }
+                    TaskStore.complete(task)
                 },
                 onRestore: { task in
                     withAnimation(.spring(response: 0.38, dampingFraction: 0.86)) {

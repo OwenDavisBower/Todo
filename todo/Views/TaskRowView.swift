@@ -13,6 +13,7 @@ struct TaskRowView: View {
     var onComplete: () -> Void = {}
     var onRestore: () -> Void = {}
     var onDelete: () -> Void = {}
+    var onCollapseStarted: () -> Void = {}
     var onReorderDragChanged: (CGFloat) -> Void = { _ in }
     var onReorderDragEnded: () -> Void = {}
 
@@ -60,7 +61,7 @@ struct TaskRowView: View {
         .offset(y: reorderOffset + reorderShift)
         .scaleEffect(y: isCollapsing ? 0.01 : 1, anchor: .top)
         .opacity(isCollapsing ? 0 : 1)
-        .frame(maxHeight: isCollapsing ? 0 : nil)
+        .clipped()
         .contentShape(Rectangle())
         .simultaneousGesture(horizontalDragGesture)
         .animation(shouldAnimateReorder ? .spring(response: 0.32, dampingFraction: 0.86) : nil, value: isDragging)
@@ -237,6 +238,7 @@ struct TaskRowView: View {
         withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
             horizontalOffset = offset
         } completion: {
+            onCollapseStarted()
             withAnimation(.spring(response: 0.34, dampingFraction: 0.9)) {
                 isCollapsing = true
             }
