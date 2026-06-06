@@ -17,38 +17,29 @@ struct TodoTaskEntity: AppEntity {
 struct TodoTaskEntityQuery: EntityQuery, EntityStringQuery {
     @MainActor
     func entities(for identifiers: [TodoTaskEntity.ID]) async throws -> [TodoTaskEntity] {
-        let context = ModelContext(ModelContainerProvider.shared)
+        let context = ModelContainerProvider.makeContext()
         let idSet = Set(identifiers)
-        return activeTasks(in: context)
+        return TaskStore.activeTasks(in: context)
             .filter { idSet.contains($0.id) }
             .map { TodoTaskEntity(id: $0.id, title: $0.title) }
     }
 
     @MainActor
     func entities(matching string: String) async throws -> [TodoTaskEntity] {
-        let context = ModelContext(ModelContainerProvider.shared)
+        let context = ModelContainerProvider.makeContext()
         let search = string.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         guard !search.isEmpty else {
             return try await suggestedEntities()
         }
 
-        return TaskTitleMatching.matchingTasks(activeTasks(in: context), search: string)
+        return TaskTitleMatching.matchingTasks(TaskStore.activeTasks(in: context), search: string)
             .map { TodoTaskEntity(id: $0.id, title: $0.title) }
     }
 
     @MainActor
     func suggestedEntities() async throws -> [TodoTaskEntity] {
-        let context = ModelContext(ModelContainerProvider.shared)
-        return activeTasks(in: context).map { TodoTaskEntity(id: $0.id, title: $0.title) }
-    }
-
-    @MainActor
-    private func activeTasks(in context: ModelContext) -> [Task] {
-        var descriptor = FetchDescriptor<Task>(
-            predicate: #Predicate { !$0.isCompleted },
-            sortBy: [SortDescriptor(\.sortOrder)]
-        )
-        return (try? context.fetch(descriptor)) ?? []
+        let context = ModelContainerProvider.makeContext()
+        return TaskStore.activeTasks(in: context).map { TodoTaskEntity(id: $0.id, title: $0.title) }
     }
 }
 
@@ -71,16 +62,14 @@ struct AddTaskIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult & ReturnsValue<String> {
-        let context = ModelContext(ModelContainerProvider.shared)
-        let task = TaskStore.addTask(title: title, dueDate: dueDate, in: context)
-        try context.save()
+        let summary = try ModelContainerProvider.withSavedContext { context in
+            let task = TaskStore.addTask(title: title, dueDate: dueDate, in: context)
 
-        let summary: String
-        if let dueDate = task.dueDate {
-            let label = DueDateFormatting.label(for: dueDate)
-            summary = "Added \"\(task.title)\" due \(label.text)"
-        } else {
-            summary = "Added \"\(task.title)\""
+            if let dueDate = task.dueDate {
+                let label = DueDateFormatting.label(for: dueDate)
+                return "Added \"\(task.title)\" due \(label.text)"
+            }
+            return "Added \"\(task.title)\""
         }
 
         return .result(value: summary)
@@ -101,17 +90,17 @@ struct DeleteTaskIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult & ReturnsValue<String> {
-        let context = ModelContext(ModelContainerProvider.shared)
+        let summary = try ModelContainerProvider.withSavedContext { context in
+            guard let model = TaskStore.findTask(id: task.id, in: context) else {
+                throw IntentError.taskNotFound(task.title)
+            }
 
-        guard let model = TaskStore.findTask(id: task.id, in: context) else {
-            throw IntentError.taskNotFound(task.title)
+            let deletedTitle = model.title
+            TaskStore.delete(model, in: context)
+            return "Removed \"\(deletedTitle)\""
         }
 
-        let deletedTitle = model.title
-        TaskStore.delete(model, in: context)
-        try context.save()
-
-        return .result(value: "Removed \"\(deletedTitle)\"")
+        return .result(value: summary)
     }
 }
 

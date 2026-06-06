@@ -17,9 +17,14 @@ struct CustomTaskListView: View {
 
     private let rowSpacing: CGFloat = 12
 
+    private var tasksByID: [UUID: Task] {
+        Dictionary(uniqueKeysWithValues: tasks.map { ($0.id, $0) })
+    }
+
     private var displayTasks: [Task] {
         let ids = liveTaskIDs ?? tasks.map(\.id)
-        return ids.compactMap { id in tasks.first { $0.id == id } }
+        let lookup = tasksByID
+        return ids.compactMap { lookup[$0] }
     }
 
     var body: some View {

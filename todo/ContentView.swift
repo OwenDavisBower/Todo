@@ -3,14 +3,21 @@ import SwiftUI
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query(filter: #Predicate<Task> { !$0.isCompleted }, sort: \Task.sortOrder)
-    private var activeTasks: [Task]
-    @Query(filter: #Predicate<Task> { $0.isCompleted }, sort: \Task.completedAt, order: .reverse)
-    private var doneTasks: [Task]
+    @Query(sort: \Task.sortOrder) private var allTasks: [Task]
 
     @State private var filter: TaskFilter = .active
     @State private var showingAddSheet = false
     @State private var editingTask: Task?
+
+    private var activeTasks: [Task] {
+        allTasks.filter { !$0.isCompleted }
+    }
+
+    private var doneTasks: [Task] {
+        allTasks
+            .filter(\.isCompleted)
+            .sorted { ($0.completedAt ?? .distantPast) > ($1.completedAt ?? .distantPast) }
+    }
 
     var body: some View {
         NavigationStack {

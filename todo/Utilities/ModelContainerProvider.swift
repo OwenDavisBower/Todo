@@ -19,4 +19,17 @@ enum ModelContainerProvider {
             fatalError("Could not create ModelContainer: \(error)")
         }
     }()
+
+    @MainActor
+    static func makeContext() -> ModelContext {
+        ModelContext(shared)
+    }
+
+    @MainActor
+    static func withSavedContext<T>(_ work: (ModelContext) throws -> T) throws -> T {
+        let context = makeContext()
+        let result = try work(context)
+        try context.save()
+        return result
+    }
 }
