@@ -4,7 +4,7 @@ enum AppTheme {
     static let ink = Color(hex: "3c3429")
     static let sage = Color(hex: "7d8b6f")
     static let mist = Color(hex: "c9bfb2")
-    static let lilac = Color(hex: "c4a07a")
+    static let lilac = Color(hex: "b8c9ab")
     static let blush = Color(hex: "ede6da")
 
     static let background = Color(hex: "f7f3ed")
