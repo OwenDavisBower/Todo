@@ -9,6 +9,15 @@ struct TodoTaskEntity: AppEntity {
     var id: UUID
     var title: String
 
+    init(id: UUID, title: String) {
+        self.id = id
+        self.title = title
+    }
+
+    init(_ task: Task) {
+        self.init(id: task.id, title: task.title)
+    }
+
     var displayRepresentation: DisplayRepresentation {
         DisplayRepresentation(title: "\(title)")
     }
@@ -16,30 +25,34 @@ struct TodoTaskEntity: AppEntity {
 
 struct TodoTaskEntityQuery: EntityQuery, EntityStringQuery {
     @MainActor
+    private func activeEntities(in context: ModelContext) -> [TodoTaskEntity] {
+        TaskStore.activeTasks(in: context).map(TodoTaskEntity.init)
+    }
+
+    @MainActor
     func entities(for identifiers: [TodoTaskEntity.ID]) async throws -> [TodoTaskEntity] {
         let context = ModelContainerProvider.makeContext()
-        let idSet = Set(identifiers)
-        return TaskStore.activeTasks(in: context)
-            .filter { idSet.contains($0.id) }
-            .map { TodoTaskEntity(id: $0.id, title: $0.title) }
+        return TaskStore.tasks(withIDs: identifiers, in: context).map(TodoTaskEntity.init)
     }
 
     @MainActor
     func entities(matching string: String) async throws -> [TodoTaskEntity] {
         let context = ModelContainerProvider.makeContext()
-        let search = string.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        guard !search.isEmpty else {
-            return try await suggestedEntities()
+        let activeTasks = TaskStore.activeTasks(in: context)
+        let normalizedSearch = string.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+
+        guard !normalizedSearch.isEmpty else {
+            return activeTasks.map(TodoTaskEntity.init)
         }
 
-        return TaskTitleMatching.matchingTasks(TaskStore.activeTasks(in: context), search: string)
-            .map { TodoTaskEntity(id: $0.id, title: $0.title) }
+        return TaskTitleMatching.matchingTasks(activeTasks, normalizedSearch: normalizedSearch)
+            .map(TodoTaskEntity.init)
     }
 
     @MainActor
     func suggestedEntities() async throws -> [TodoTaskEntity] {
         let context = ModelContainerProvider.makeContext()
-        return TaskStore.activeTasks(in: context).map { TodoTaskEntity(id: $0.id, title: $0.title) }
+        return activeEntities(in: context)
     }
 }
 

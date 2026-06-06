@@ -14,17 +14,14 @@ struct CustomTaskListView: View {
     @State private var rowFrames: [UUID: CGRect] = [:]
     @State private var liveTaskIDs: [UUID]?
     @State private var dragCurrentIndex: Int?
+    @State private var cachedTasksByID: [UUID: Task]?
 
     private let rowSpacing: CGFloat = 12
 
-    private var tasksByID: [UUID: Task] {
-        Dictionary(uniqueKeysWithValues: tasks.map { ($0.id, $0) })
-    }
-
     private var displayTasks: [Task] {
-        let ids = liveTaskIDs ?? tasks.map(\.id)
-        let lookup = tasksByID
-        return ids.compactMap { lookup[$0] }
+        guard let liveTaskIDs else { return tasks }
+        let lookup = cachedTasksByID ?? Dictionary(uniqueKeysWithValues: tasks.map { ($0.id, $0) })
+        return liveTaskIDs.compactMap { lookup[$0] }
     }
 
     var body: some View {
@@ -71,6 +68,7 @@ struct CustomTaskListView: View {
         guard allowsReorder else { return }
 
         if draggingTaskID == nil {
+            cachedTasksByID = Dictionary(uniqueKeysWithValues: tasks.map { ($0.id, $0) })
             liveTaskIDs = tasks.map(\.id)
             dragCurrentIndex = displayTasks.firstIndex { $0.id == task.id }
             draggingTaskID = task.id
@@ -152,6 +150,7 @@ struct CustomTaskListView: View {
         reorderDragOffset = 0
         liveTaskIDs = nil
         dragCurrentIndex = nil
+        cachedTasksByID = nil
     }
 }
 

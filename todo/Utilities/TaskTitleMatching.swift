@@ -1,22 +1,23 @@
 import Foundation
 
 enum TaskTitleMatching {
-    static func matchingTasks(_ tasks: [Task], search: String) -> [Task] {
-        let normalized = search.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        guard !normalized.isEmpty else { return [] }
+    static func matchingTasks(_ tasks: [Task], normalizedSearch: String) -> [Task] {
+        guard !normalizedSearch.isEmpty else { return [] }
 
-        let exact = tasks.filter { $0.title.lowercased() == normalized }
+        let exact = tasks.filter { $0.title.lowercased() == normalizedSearch }
         if !exact.isEmpty { return exact }
 
-        let contains = tasks.filter { $0.title.lowercased().contains(normalized) }
+        let contains = tasks.filter { $0.title.lowercased().contains(normalizedSearch) }
         if !contains.isEmpty { return contains }
 
-        if let best = tasks.min(by: {
-            levenshtein($0.title.lowercased(), normalized) < levenshtein($1.title.lowercased(), normalized)
-        }) {
-            return [best]
+        let maxDistance = max(2, normalizedSearch.count / 2)
+        let ranked = tasks.map { task in
+            (task, levenshtein(task.title.lowercased(), normalizedSearch))
         }
-        return []
+        guard let best = ranked.min(by: { $0.1 < $1.1 }), best.1 <= maxDistance else {
+            return []
+        }
+        return [best.0]
     }
 
     static func levenshtein(_ lhs: String, _ rhs: String) -> Int {

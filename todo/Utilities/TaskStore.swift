@@ -63,6 +63,10 @@ enum TaskStore {
         return try? context.fetch(descriptor).first
     }
 
+    static func tasks(withIDs ids: [UUID], in context: ModelContext) -> [Task] {
+        ids.compactMap { findTask(id: $0, in: context) }
+    }
+
     static func activeTasks(in context: ModelContext) -> [Task] {
         var descriptor = FetchDescriptor<Task>(
             predicate: #Predicate { !$0.isCompleted },
