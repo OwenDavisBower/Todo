@@ -30,18 +30,16 @@ struct AddTaskBottomSheet: View {
         .padding(.top, isTitleFocused ? 20 : 12)
         .padding(.bottom, 12)
         .background(alignment: .top) {
-            if isTitleFocused {
-                UnevenRoundedRectangle(
-                    topLeadingRadius: 24,
-                    bottomLeadingRadius: 0,
-                    bottomTrailingRadius: 0,
-                    topTrailingRadius: 24,
-                    style: .continuous
-                )
-                .fill(AppTheme.background)
-                .shadow(color: AppTheme.ink.opacity(0.1), radius: 24, y: -8)
-                .ignoresSafeArea(edges: .bottom)
-            }
+            UnevenRoundedRectangle(
+                topLeadingRadius: 24,
+                bottomLeadingRadius: 0,
+                bottomTrailingRadius: 0,
+                topTrailingRadius: 24,
+                style: .continuous
+            )
+            .fill(AppTheme.background)
+            .shadow(color: AppTheme.ink.opacity(0.1), radius: 24, y: -8)
+            .ignoresSafeArea(edges: .bottom)
         }
         .animation(.spring(response: 0.35, dampingFraction: 0.86), value: isTitleFocused)
         .onChange(of: isTitleFocused) { _, focused in
@@ -87,24 +85,21 @@ struct AddTaskBottomSheet: View {
                 }
             }
 
-            if isTitleFocused {
-                Button(action: submit) {
-                    Image(systemName: "plus")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(AppTheme.blush)
-                        .opacity(trimmedTitle.isEmpty ? 0.45 : 1)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background {
-                            RoundedRectangle(cornerRadius: cardCornerRadius, style: .continuous)
-                                .fill(AppTheme.sage)
-                                .shadow(color: AppTheme.ink.opacity(0.07), radius: 10, y: 3)
-                        }
-                }
-                .buttonStyle(.plain)
-                .disabled(trimmedTitle.isEmpty)
-                .frame(width: addButtonSize, height: addButtonSize)
-                .transition(.move(edge: .trailing).combined(with: .opacity))
+            Button(action: submit) {
+                Image(systemName: "plus")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(AppTheme.blush)
+                    .opacity(trimmedTitle.isEmpty ? 0.45 : 1)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background {
+                        RoundedRectangle(cornerRadius: cardCornerRadius, style: .continuous)
+                            .fill(AppTheme.sage)
+                            .shadow(color: AppTheme.ink.opacity(0.07), radius: 10, y: 3)
+                    }
             }
+            .buttonStyle(.plain)
+            .disabled(trimmedTitle.isEmpty)
+            .frame(width: addButtonSize, height: addButtonSize)
         }
         .fixedSize(horizontal: false, vertical: true)
         .onPreferenceChange(TextFieldCardHeightKey.self) { height in
@@ -112,7 +107,6 @@ struct AddTaskBottomSheet: View {
                 textFieldCardHeight = height
             }
         }
-        .animation(.spring(response: 0.32, dampingFraction: 0.82), value: isTitleFocused)
     }
 
     private var expandedOptions: some View {
