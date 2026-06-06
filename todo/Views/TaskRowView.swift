@@ -158,7 +158,10 @@ struct TaskRowView: View {
     }
 
     private var restoreButton: some View {
-        Button(action: onRestore) {
+        Button {
+            guard !isPerformingAction else { return }
+            performAction(offset: -500, haptic: .medium) { onRestore() }
+        } label: {
             Image(systemName: "arrow.uturn.backward.circle.fill")
                 .font(.title2)
                 .foregroundStyle(AppTheme.sage)
