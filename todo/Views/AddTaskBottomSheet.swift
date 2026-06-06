@@ -70,6 +70,7 @@ struct AddTaskBottomSheet: View {
             .focused($isTitleFocused)
             .submitLabel(.done)
             .onSubmit(submit)
+            .frame(maxWidth: .infinity, minHeight: 36, alignment: .leading)
             .padding(.horizontal, 18)
             .padding(.vertical, 14)
             .background {
@@ -85,7 +86,6 @@ struct AddTaskBottomSheet: View {
                     )
                 }
             }
-            .frame(maxWidth: .infinity)
 
             if isTitleFocused {
                 Button(action: submit) {
