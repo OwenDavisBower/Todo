@@ -23,6 +23,10 @@ struct TaskRowView: View {
     private let actionThreshold: CGFloat = 80
     private let cardCornerRadius: CGFloat = 18
 
+    private var shouldAnimateReorder: Bool {
+        !isDragging && !isSettling
+    }
+
     var body: some View {
         ZStack {
             leadingActionBackground
@@ -40,10 +44,10 @@ struct TaskRowView: View {
         }
         .contentShape(Rectangle())
         .simultaneousGesture(horizontalDragGesture)
-        .animation(isDragging && !isSettling ? nil : .spring(response: 0.32, dampingFraction: 0.86), value: isDragging)
-        .animation(isDragging && !isSettling ? nil : .interactiveSpring(response: 0.28, dampingFraction: 0.86), value: reorderShift)
+        .animation(shouldAnimateReorder ? .spring(response: 0.32, dampingFraction: 0.86) : nil, value: isDragging)
+        .animation(shouldAnimateReorder ? .interactiveSpring(response: 0.28, dampingFraction: 0.86) : nil, value: reorderShift)
         .transaction { transaction in
-            if isDragging && !isSettling {
+            if !shouldAnimateReorder {
                 transaction.animation = nil
             }
         }

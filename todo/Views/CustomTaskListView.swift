@@ -14,6 +14,7 @@ struct CustomTaskListView: View {
     @State private var dragSourceIndex: Int?
     @State private var dragTargetIndex: Int?
     @State private var isSettlingReorder = false
+    @State private var frozenTasks: [Task]?
     @State private var rowFrames: [UUID: CGRect] = [:]
     @State private var dragStartHaptic = UIImpactFeedbackGenerator(style: .medium)
     @State private var moveHaptic = UIImpactFeedbackGenerator(style: .soft)
@@ -22,10 +23,12 @@ struct CustomTaskListView: View {
     private let rowSpacing: CGFloat = 12
     private let listCoordinateSpace = "taskList"
 
+    private var listTasks: [Task] { frozenTasks ?? tasks }
+
     var body: some View {
         ScrollView {
             VStack(spacing: rowSpacing) {
-                ForEach(Array(tasks.enumerated()), id: \.element.id) { index, task in
+                ForEach(Array(listTasks.enumerated()), id: \.element.id) { index, task in
                     TaskRowView(
                         task: task,
                         filter: filter,
@@ -63,12 +66,20 @@ struct CustomTaskListView: View {
         .scrollDisabled(draggingTaskID != nil)
         .coordinateSpace(name: listCoordinateSpace)
         .onPreferenceChange(RowFrameKey.self) { rowFrames = $0 }
+        .onChange(of: tasks.map(\.id)) { _, newIDs in
+            if let frozenTasks, frozenTasks.map(\.id) == newIDs {
+                self.frozenTasks = nil
+            } else if draggingTaskID == nil, !isSettlingReorder {
+                frozenTasks = nil
+            }
+        }
     }
 
     private func handleReorderDrag(task: Task, at index: Int, translation: CGFloat) {
         guard allowsReorder else { return }
 
         if draggingTaskID == nil {
+            frozenTasks = tasks
             draggingTaskID = task.id
             dragSourceIndex = index
             dragTargetIndex = index
@@ -95,7 +106,7 @@ struct CustomTaskListView: View {
     private func insertionIndex(fingerY: CGFloat, source: Int) -> Int {
         var target = source
 
-        for (index, task) in tasks.enumerated() {
+        for (index, task) in listTasks.enumerated() {
             guard index != source, let frame = rowFrames[task.id] else { continue }
 
             let midY = frame.midY + rowShift(at: index, target: target)
@@ -117,8 +128,8 @@ struct CustomTaskListView: View {
             let source = dragSourceIndex,
             let resolvedTarget = target ?? dragTargetIndex,
             source != resolvedTarget,
-            draggingTaskID != tasks[index].id,
-            let sourceFrame = rowFrames[tasks[source].id]
+            draggingTaskID != listTasks[index].id,
+            let sourceFrame = rowFrames[listTasks[source].id]
         else { return 0 }
 
         let displacement = sourceFrame.height + rowSpacing
@@ -134,6 +145,7 @@ struct CustomTaskListView: View {
 
     private func endReorderDrag(task: Task) {
         guard allowsReorder, draggingTaskID == task.id else {
+            frozenTasks = nil
             resetReorderState()
             return
         }
@@ -155,7 +167,7 @@ struct CustomTaskListView: View {
             return
         }
 
-        var ordered = tasks
+        var ordered = listTasks
         ordered.move(
             fromOffsets: IndexSet(integer: source),
             toOffset: target > source ? target + 1 : target
@@ -165,8 +177,14 @@ struct CustomTaskListView: View {
     }
 
     private func rowDisplacement(for sourceIndex: Int) -> CGFloat {
-        guard let frame = rowFrames[tasks[sourceIndex].id] else { return 0 }
-        return frame.height + rowSpacing
+        let taskID = listTasks[sourceIndex].id
+        if let frame = rowFrames[taskID] {
+            return frame.height + rowSpacing
+        }
+        if let frame = rowFrames.values.first {
+            return frame.height + rowSpacing
+        }
+        return 0
     }
 
     private func settleAndReset(reorderedTasks: [Task]?, settleTranslation: CGFloat = 0) {
@@ -179,6 +197,7 @@ struct CustomTaskListView: View {
             transaction.disablesAnimations = true
             withTransaction(transaction) {
                 if let reorderedTasks {
+                    frozenTasks = reorderedTasks
                     TaskStore.applySortOrder(to: reorderedTasks)
                 }
                 resetReorderState()
