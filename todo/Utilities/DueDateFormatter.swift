@@ -6,7 +6,11 @@ struct DueDateLabel {
     let isOverdue: Bool
 
     var color: Color {
-        isOverdue ? .red : .secondary
+        isOverdue ? AppTheme.ink : AppTheme.sage
+    }
+
+    var background: Color {
+        isOverdue ? AppTheme.lilac : AppTheme.surface
     }
 }
 

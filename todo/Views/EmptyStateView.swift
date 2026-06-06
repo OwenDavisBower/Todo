@@ -4,11 +4,21 @@ struct EmptyStateView: View {
     let filter: TaskFilter
 
     var body: some View {
-        ContentUnavailableView {
-            Label(filter.emptyTitle, systemImage: filter.emptyIcon)
-        } description: {
+        VStack(spacing: 12) {
+            Image(systemName: filter.emptyIcon)
+                .font(.system(size: 32, weight: .ultraLight))
+                .foregroundStyle(AppTheme.mist)
+
+            Text(filter.emptyTitle)
+                .font(.title3.weight(.light))
+                .foregroundStyle(AppTheme.ink)
+
             Text(filter.emptyMessage)
+                .font(.subheadline)
+                .foregroundStyle(AppTheme.sage)
+                .multilineTextAlignment(.center)
         }
+        .padding(.horizontal, 40)
     }
 }
 
@@ -34,8 +44,8 @@ enum TaskFilter: String, CaseIterable, Identifiable {
 
     var emptyIcon: String {
         switch self {
-        case .active: "checklist"
-        case .done: "checkmark.circle"
+        case .active: "circle"
+        case .done: "checkmark"
         }
     }
 

@@ -29,27 +29,38 @@ struct TaskEditSheet: View {
                 Section {
                     TextField("Task title", text: $title)
                         .focused($titleFocused)
+                        .foregroundStyle(AppTheme.ink)
                 }
+                .listRowBackground(AppTheme.surface)
 
                 Section {
                     Toggle("Due date", isOn: $hasDueDate.animation())
+                        .tint(AppTheme.ink)
                     if hasDueDate {
                         DatePicker(
                             "Due",
                             selection: $dueDate,
                             displayedComponents: .date
                         )
+                        .tint(AppTheme.ink)
                     }
                 }
+                .listRowBackground(AppTheme.surface)
             }
+            .scrollContentBackground(.hidden)
+            .themedBackground()
             .navigationTitle(navigationTitle)
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarColorScheme(.light, for: .navigationBar)
+            .toolbarBackground(AppTheme.background, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
+                        .foregroundStyle(AppTheme.sage)
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") { save() }
+                        .fontWeight(.medium)
                         .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
@@ -57,6 +68,8 @@ struct TaskEditSheet: View {
                 titleFocused = true
             }
         }
+        .tint(AppTheme.ink)
+        .presentationBackground(AppTheme.background)
     }
 
     private func save() {

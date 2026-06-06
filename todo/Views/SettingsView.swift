@@ -7,25 +7,34 @@ struct SettingsView: View {
 
     var body: some View {
         List {
-            Section("Data") {
+            Section {
                 Button("Clear Completed Tasks", role: .destructive) {
                     withAnimation {
                         TaskStore.clearCompleted(in: modelContext)
                     }
                 }
                 .disabled(completedTasks.isEmpty)
+                .foregroundStyle(completedTasks.isEmpty ? AppTheme.mist : AppTheme.ink)
             }
+            .listRowBackground(AppTheme.surface)
 
-            Section("About") {
+            Section {
                 HStack {
                     Text("Version")
+                        .foregroundStyle(AppTheme.ink)
                     Spacer()
                     Text(appVersion)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(AppTheme.sage)
                 }
             }
+            .listRowBackground(AppTheme.surface)
         }
+        .scrollContentBackground(.hidden)
+        .themedBackground()
         .navigationTitle("Settings")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarColorScheme(.light, for: .navigationBar)
+        .toolbarBackground(AppTheme.background, for: .navigationBar)
     }
 
     private var appVersion: String {

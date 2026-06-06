@@ -11,6 +11,7 @@ struct todoApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .tint(AppTheme.ink)
         }
         .modelContainer(ModelContainerProvider.shared)
     }

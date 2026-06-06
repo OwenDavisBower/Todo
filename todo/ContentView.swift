@@ -15,14 +15,7 @@ struct ContentView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                Picker("Filter", selection: $filter) {
-                    ForEach(TaskFilter.allCases) { tab in
-                        Text("\(tab.title) (\(count(for: tab)))").tag(tab)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .padding(.horizontal)
-                .padding(.vertical, 8)
+                FilterBar(selection: $filter, counts: count(for:))
 
                 Group {
                     switch filter {
@@ -33,13 +26,19 @@ struct ContentView: View {
                     }
                 }
             }
+            .themedBackground()
             .navigationTitle("Todo")
+            .navigationBarTitleDisplayMode(.large)
+            .toolbarColorScheme(.light, for: .navigationBar)
+            .toolbarBackground(AppTheme.background, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     NavigationLink {
                         SettingsView()
                     } label: {
                         Image(systemName: "gearshape")
+                            .font(.body.weight(.light))
+                            .foregroundStyle(AppTheme.sage)
                     }
                 }
             }
@@ -48,11 +47,13 @@ struct ContentView: View {
                     showingAddSheet = true
                 } label: {
                     Image(systemName: "plus")
-                        .font(.title2.weight(.semibold))
-                        .foregroundStyle(.white)
-                        .frame(width: 56, height: 56)
-                        .background(Circle().fill(Color.accentColor))
-                        .shadow(color: .black.opacity(0.15), radius: 8, y: 4)
+                        .font(.title3.weight(.medium))
+                        .foregroundStyle(AppTheme.blush)
+                        .frame(width: 52, height: 52)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(AppTheme.ink)
+                        )
                 }
                 .padding(24)
                 .accessibilityLabel("Add task")
@@ -69,6 +70,7 @@ struct ContentView: View {
                 }
             }
         }
+        .tint(AppTheme.ink)
     }
 
     @ViewBuilder
@@ -82,6 +84,9 @@ struct ContentView: View {
                     TaskRowView(task: task, showDragHandle: allowsReorder) {
                         editingTask = task
                     }
+                    .listRowInsets(EdgeInsets(top: 14, leading: 20, bottom: 14, trailing: 20))
+                    .listRowSeparatorTint(AppTheme.divider)
+                    .listRowBackground(AppTheme.background)
                     .swipeActions(edge: .leading, allowsFullSwipe: true) {
                         if filter == .active {
                             Button {
@@ -91,7 +96,7 @@ struct ContentView: View {
                             } label: {
                                 Label("Done", systemImage: "checkmark")
                             }
-                            .tint(.green)
+                            .tint(AppTheme.sage)
                         } else {
                             Button {
                                 withAnimation {
@@ -100,7 +105,7 @@ struct ContentView: View {
                             } label: {
                                 Label("Restore", systemImage: "arrow.uturn.backward")
                             }
-                            .tint(.blue)
+                            .tint(AppTheme.mist)
                         }
                     }
                     .swipeActions(edge: .trailing, allowsFullSwipe: true) {
@@ -111,6 +116,7 @@ struct ContentView: View {
                         } label: {
                             Label("Delete", systemImage: "trash")
                         }
+                        .tint(AppTheme.ink)
                     }
                 }
                 .onMove { source, destination in
@@ -119,6 +125,7 @@ struct ContentView: View {
                 }
             }
             .listStyle(.plain)
+            .scrollContentBackground(.hidden)
         }
     }
 
