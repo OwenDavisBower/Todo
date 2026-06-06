@@ -74,17 +74,17 @@ struct ContentView: View {
                 allowsReorder: allowsReorder,
                 onEdit: { editingTask = $0 },
                 onComplete: { task in
-                    withAnimation {
+                    withAnimation(.spring(response: 0.38, dampingFraction: 0.86)) {
                         TaskStore.complete(task)
                     }
                 },
                 onRestore: { task in
-                    withAnimation {
+                    withAnimation(.spring(response: 0.38, dampingFraction: 0.86)) {
                         TaskStore.uncomplete(task, in: modelContext)
                     }
                 },
                 onDelete: { task in
-                    withAnimation {
+                    withAnimation(.spring(response: 0.38, dampingFraction: 0.86)) {
                         TaskStore.delete(task, in: modelContext)
                     }
                 }

@@ -20,12 +20,25 @@ struct TaskRowView: View {
     @State private var isPerformingAction = false
     @State private var isHorizontalSwipe = false
     @State private var isReorderDragging = false
+    @State private var isCollapsing = false
 
     private let actionThreshold: CGFloat = 80
     private let cardCornerRadius: CGFloat = 18
 
     private var shouldAnimateReorder: Bool {
         !isDragging && !isSettling
+    }
+
+    private var leadingSwipeProgress: CGFloat {
+        min(max(horizontalOffset / actionThreshold, 0), 1)
+    }
+
+    private var trailingSwipeProgress: CGFloat {
+        min(max(-horizontalOffset / actionThreshold, 0), 1)
+    }
+
+    private var isCompletingSwipe: Bool {
+        filter == .active && leadingSwipeProgress > 0
     }
 
     var body: some View {
@@ -43,10 +56,15 @@ struct TaskRowView: View {
                     y: isDragging && !isSettling ? 6 : 0
                 )
         }
+        .scaleEffect(y: isCollapsing ? 0.01 : 1, anchor: .top)
+        .opacity(isCollapsing ? 0 : 1)
+        .frame(maxHeight: isCollapsing ? 0 : nil)
+        .clipped()
         .contentShape(Rectangle())
         .simultaneousGesture(horizontalDragGesture)
         .animation(shouldAnimateReorder ? .spring(response: 0.32, dampingFraction: 0.86) : nil, value: isDragging)
         .animation(shouldAnimateReorder ? .interactiveSpring(response: 0.28, dampingFraction: 0.86) : nil, value: reorderShift)
+        .animation(.easeOut(duration: 0.18), value: leadingSwipeProgress > 0.35)
         .transaction { transaction in
             if !shouldAnimateReorder {
                 transaction.animation = nil
@@ -65,12 +83,14 @@ struct TaskRowView: View {
             HStack(spacing: 12) {
                 Text(task.title)
                     .font(.body.weight(.medium))
-                    .foregroundStyle(AppTheme.ink)
+                    .foregroundStyle(titleColor)
+                    .strikethrough(isCompletingSwipe && leadingSwipeProgress > 0.45, color: AppTheme.mist)
                     .multilineTextAlignment(.leading)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                 if let dueDate = task.dueDate {
                     dueDateBadge(for: dueDate)
+                        .opacity(isCompletingSwipe ? 1 - Double(leadingSwipeProgress) * 0.65 : 1)
                 }
             }
             .contentShape(Rectangle())
@@ -90,10 +110,13 @@ struct TaskRowView: View {
         }
     }
 
+    private var titleColor: Color {
+        guard isCompletingSwipe else { return AppTheme.ink }
+        return leadingSwipeProgress > 0.35 ? AppTheme.mist : AppTheme.ink
+    }
+
     @ViewBuilder
     private var leadingActionBackground: some View {
-        let progress = min(max(horizontalOffset / actionThreshold, 0), 1)
-
         HStack(spacing: 0) {
             RoundedRectangle(cornerRadius: cardCornerRadius, style: .continuous)
                 .fill(AppTheme.sage)
@@ -102,18 +125,17 @@ struct TaskRowView: View {
                         .font(.title)
                         .foregroundStyle(.white.opacity(0.95))
                         .padding(.leading, 24)
-                        .scaleEffect(0.85 + progress * 0.15)
+                        .scaleEffect(0.72 + leadingSwipeProgress * 0.28)
+                        .symbolEffect(.bounce, value: leadingSwipeProgress >= 1)
                 }
 
             Spacer(minLength: 0)
         }
-        .opacity(horizontalOffset > 0 ? progress : 0)
+        .opacity(horizontalOffset > 0 ? leadingSwipeProgress : 0)
     }
 
     @ViewBuilder
     private var trailingActionBackground: some View {
-        let progress = min(max(-horizontalOffset / actionThreshold, 0), 1)
-
         HStack(spacing: 0) {
             Spacer(minLength: 0)
 
@@ -124,10 +146,11 @@ struct TaskRowView: View {
                         .font(.title)
                         .foregroundStyle(AppTheme.blush.opacity(0.95))
                         .padding(.trailing, 24)
-                        .scaleEffect(0.85 + progress * 0.15)
+                        .scaleEffect(0.72 + trailingSwipeProgress * 0.28)
+                        .symbolEffect(.bounce, value: trailingSwipeProgress >= 1)
                 }
         }
-        .opacity(horizontalOffset < 0 ? progress : 0)
+        .opacity(horizontalOffset < 0 ? trailingSwipeProgress : 0)
     }
 
     private var leadingSpacer: some View {
@@ -210,14 +233,19 @@ struct TaskRowView: View {
         isPerformingAction = true
         UIImpactFeedbackGenerator(style: haptic).impactOccurred()
 
-        withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
             horizontalOffset = offset
         }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.28) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.24) {
+            withAnimation(.spring(response: 0.34, dampingFraction: 0.9)) {
+                isCollapsing = true
+            }
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.46) {
             action()
             isPerformingAction = false
-            horizontalOffset = 0
         }
     }
 
