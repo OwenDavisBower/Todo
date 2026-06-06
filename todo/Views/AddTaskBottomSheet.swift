@@ -17,10 +17,6 @@ struct AddTaskBottomSheet: View {
         title.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private var showAddButton: Bool {
-        !trimmedTitle.isEmpty
-    }
-
     var body: some View {
         VStack(spacing: 12) {
             if isTitleFocused {
@@ -90,18 +86,22 @@ struct AddTaskBottomSheet: View {
             }
             .frame(maxWidth: .infinity)
 
-            if showAddButton {
+            if isTitleFocused {
                 Button(action: submit) {
                     Image(systemName: "plus")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(AppTheme.blush)
+                        .opacity(trimmedTitle.isEmpty ? 0.45 : 1)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background {
+                            RoundedRectangle(cornerRadius: cardCornerRadius, style: .continuous)
+                                .fill(AppTheme.sage)
+                                .shadow(color: AppTheme.ink.opacity(0.07), radius: 10, y: 3)
+                        }
                 }
                 .buttonStyle(.plain)
-                .frame(width: 48, height: textFieldCardHeight)
-                .background {
-                    RoundedRectangle(cornerRadius: cardCornerRadius, style: .continuous)
-                        .fill(AppTheme.ink)
-                }
+                .disabled(trimmedTitle.isEmpty)
+                .frame(width: 48, height: textFieldCardHeight > 0 ? textFieldCardHeight : 64)
                 .transition(.move(edge: .trailing).combined(with: .opacity))
             }
         }
@@ -111,7 +111,7 @@ struct AddTaskBottomSheet: View {
                 textFieldCardHeight = height
             }
         }
-        .animation(.spring(response: 0.32, dampingFraction: 0.82), value: showAddButton)
+        .animation(.spring(response: 0.32, dampingFraction: 0.82), value: isTitleFocused)
     }
 
     private var expandedOptions: some View {
