@@ -60,7 +60,7 @@ struct CustomTaskListView: View {
                             )
                         }
                     }
-                    .zIndex(draggingTaskID == task.id ? 1 : 0)
+                    .zIndex(reorderZIndex(for: index, task: task))
                 }
             }
             .padding(.horizontal, 20)
@@ -125,6 +125,12 @@ struct CustomTaskListView: View {
         }
 
         return target
+    }
+
+    private func reorderZIndex(for index: Int, task: Task) -> Double {
+        if draggingTaskID == task.id { return 2 }
+        if rowShift(at: index) != 0 { return 1 }
+        return 0
     }
 
     private func rowShift(at index: Int, target: Int? = nil) -> CGFloat {

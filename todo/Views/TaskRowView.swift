@@ -79,7 +79,7 @@ struct TaskRowView: View {
         .frame(height: isCollapsing ? 0 : rowHeight, alignment: .top)
         .offset(y: reorderOffset + reorderShift)
         .opacity(isCollapsing ? 0 : 1)
-        .clipped()
+        .clipped(when: isCollapsing)
         .contentShape(Rectangle())
         .simultaneousGesture(horizontalDragGesture)
         .animation(shouldAnimateReorder ? .spring(response: 0.32, dampingFraction: 0.86) : nil, value: isDragging)
@@ -275,6 +275,17 @@ struct TaskRowView: View {
             .padding(.horizontal, 10)
             .padding(.vertical, 5)
             .background(Capsule().fill(label.background))
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func clipped(when condition: Bool) -> some View {
+        if condition {
+            clipped()
+        } else {
+            self
+        }
     }
 }
 
