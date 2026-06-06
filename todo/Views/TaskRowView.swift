@@ -15,8 +15,9 @@ struct TaskRowView: View {
 
     @State private var horizontalOffset: CGFloat = 0
     @State private var isPerformingAction = false
+    @State private var isHorizontalSwipe = false
 
-    private let actionThreshold: CGFloat = 96
+    private let actionThreshold: CGFloat = 80
     private let cardCornerRadius: CGFloat = 18
 
     var body: some View {
@@ -33,8 +34,9 @@ struct TaskRowView: View {
                     radius: isDragging ? 16 : 0,
                     y: isDragging ? 8 : 0
                 )
-                .gesture(horizontalDragGesture)
         }
+        .contentShape(Rectangle())
+        .simultaneousGesture(horizontalDragGesture)
         .animation(.spring(response: 0.35, dampingFraction: 0.78), value: isDragging)
     }
 
@@ -46,25 +48,23 @@ struct TaskRowView: View {
 
             completionIndicator
 
-            Button(action: onTap) {
-                HStack(spacing: 12) {
-                    Text(task.title)
-                        .font(.title3.weight(.medium))
-                        .foregroundStyle(AppTheme.ink)
-                        .multilineTextAlignment(.leading)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+            HStack(spacing: 12) {
+                Text(task.title)
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(AppTheme.ink)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
-                    if let dueDate = task.dueDate {
-                        dueDateBadge(for: dueDate)
-                    }
+                if let dueDate = task.dueDate {
+                    dueDateBadge(for: dueDate)
                 }
-                .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .contentShape(Rectangle())
+            .onTapGesture(perform: onTap)
         }
         .padding(.leading, showDragHandle ? 14 : 18)
         .padding(.trailing, 18)
-        .padding(.vertical, 22)
+        .padding(.vertical, 14)
         .background {
             RoundedRectangle(cornerRadius: cardCornerRadius, style: .continuous)
                 .fill(.white)
@@ -78,12 +78,12 @@ struct TaskRowView: View {
         return ZStack {
             Circle()
                 .stroke(AppTheme.mist.opacity(0.6), lineWidth: 2)
-                .frame(width: 26, height: 26)
+                .frame(width: 22, height: 22)
 
             if filter == .active {
                 Circle()
                     .fill(AppTheme.sage.opacity(progress))
-                    .frame(width: 26, height: 26)
+                    .frame(width: 22, height: 22)
 
                 Image(systemName: "checkmark")
                     .font(.caption.weight(.bold))
@@ -139,7 +139,7 @@ struct TaskRowView: View {
         Image(systemName: "line.3.horizontal")
             .font(.body.weight(.medium))
             .foregroundStyle(AppTheme.mist)
-            .frame(width: 24, height: 48)
+            .frame(width: 24, height: 36)
             .contentShape(Rectangle())
             .highPriorityGesture(reorderGesture)
             .accessibilityLabel("Reorder")
@@ -162,14 +162,22 @@ struct TaskRowView: View {
     }
 
     private var horizontalDragGesture: some Gesture {
-        DragGesture(minimumDistance: 16)
+        DragGesture(minimumDistance: 12)
             .onChanged { value in
                 guard !isPerformingAction else { return }
-                guard abs(value.translation.width) > abs(value.translation.height) * 0.8 else { return }
+
+                if !isHorizontalSwipe {
+                    let width = abs(value.translation.width)
+                    let height = abs(value.translation.height)
+                    guard width > 8, width > height else { return }
+                    isHorizontalSwipe = true
+                }
+
                 horizontalOffset = value.translation.width
             }
             .onEnded { value in
-                guard !isPerformingAction else { return }
+                defer { isHorizontalSwipe = false }
+                guard !isPerformingAction, isHorizontalSwipe else { return }
                 handleHorizontalDragEnd(translation: value.translation.width)
             }
     }
@@ -200,6 +208,8 @@ struct TaskRowView: View {
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.28) {
             action()
+            isPerformingAction = false
+            horizontalOffset = 0
         }
     }
 
