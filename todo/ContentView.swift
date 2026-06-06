@@ -77,14 +77,10 @@ struct ContentView: View {
                     TaskStore.complete(task)
                 },
                 onRestore: { task in
-                    withAnimation(.spring(response: 0.38, dampingFraction: 0.86)) {
-                        TaskStore.uncomplete(task, in: modelContext)
-                    }
+                    TaskStore.uncomplete(task, in: modelContext)
                 },
                 onDelete: { task in
-                    withAnimation(.spring(response: 0.38, dampingFraction: 0.86)) {
-                        TaskStore.delete(task, in: modelContext)
-                    }
+                    TaskStore.delete(task, in: modelContext)
                 }
             )
         }

@@ -8,6 +8,7 @@ struct TaskRowView: View {
     var isSettling: Bool = false
     var reorderOffset: CGFloat = 0
     var reorderShift: CGFloat = 0
+    var bottomSpacing: CGFloat = 0
     var listCoordinateSpace: String = "taskList"
     var onTap: () -> Void
     var onComplete: () -> Void = {}
@@ -22,6 +23,7 @@ struct TaskRowView: View {
     @State private var isHorizontalSwipe = false
     @State private var isReorderDragging = false
     @State private var isCollapsing = false
+    @State private var rowHeight: CGFloat?
 
     private let actionThreshold: CGFloat = 80
     private let cardCornerRadius: CGFloat = 18
@@ -45,21 +47,37 @@ struct TaskRowView: View {
     }
 
     var body: some View {
-        ZStack {
-            leadingActionBackground
-            trailingActionBackground
+        VStack(spacing: 0) {
+            ZStack {
+                leadingActionBackground
+                trailingActionBackground
 
-            cardContent
-                .offset(x: horizontalOffset)
-                .scaleEffect(isDragging && !isSettling ? 1.03 : 1)
-                .shadow(
-                    color: AppTheme.ink.opacity(isDragging && !isSettling ? 0.12 : 0),
-                    radius: isDragging && !isSettling ? 12 : 0,
-                    y: isDragging && !isSettling ? 6 : 0
-                )
+                cardContent
+                    .offset(x: horizontalOffset)
+                    .scaleEffect(isDragging && !isSettling ? 1.03 : 1)
+                    .shadow(
+                        color: AppTheme.ink.opacity(isDragging && !isSettling ? 0.12 : 0),
+                        radius: isDragging && !isSettling ? 12 : 0,
+                        y: isDragging && !isSettling ? 6 : 0
+                    )
+            }
+
+            if bottomSpacing > 0 {
+                Color.clear.frame(height: bottomSpacing)
+            }
         }
+        .background {
+            GeometryReader { geometry in
+                Color.clear.preference(key: RowHeightKey.self, value: geometry.size.height)
+            }
+        }
+        .onPreferenceChange(RowHeightKey.self) { height in
+            if !isCollapsing, height > 0 {
+                rowHeight = height
+            }
+        }
+        .frame(height: isCollapsing ? 0 : rowHeight, alignment: .top)
         .offset(y: reorderOffset + reorderShift)
-        .scaleEffect(y: isCollapsing ? 0.01 : 1, anchor: .top)
         .opacity(isCollapsing ? 0 : 1)
         .clipped()
         .contentShape(Rectangle())
@@ -238,12 +256,10 @@ struct TaskRowView: View {
         withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
             horizontalOffset = offset
         } completion: {
-            onCollapseStarted()
             withAnimation(.spring(response: 0.34, dampingFraction: 0.9)) {
+                onCollapseStarted()
                 isCollapsing = true
-            }
-
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
+            } completion: {
                 action()
                 isPerformingAction = false
             }
@@ -259,6 +275,14 @@ struct TaskRowView: View {
             .padding(.horizontal, 10)
             .padding(.vertical, 5)
             .background(Capsule().fill(label.background))
+    }
+}
+
+private struct RowHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
     }
 }
 

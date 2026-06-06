@@ -28,7 +28,7 @@ struct CustomTaskListView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: rowSpacing) {
+            VStack(spacing: 0) {
                 ForEach(Array(listTasks.enumerated()), id: \.element.id) { index, task in
                     TaskRowView(
                         task: task,
@@ -38,6 +38,7 @@ struct CustomTaskListView: View {
                         isSettling: isSettlingReorder,
                         reorderOffset: draggingTaskID == task.id ? dragTranslation : 0,
                         reorderShift: rowShift(at: index),
+                        bottomSpacing: index < listTasks.count - 1 ? rowSpacing : 0,
                         listCoordinateSpace: listCoordinateSpace,
                         onTap: { onEdit(task) },
                         onComplete: { commitRemoval { onComplete(task) } },
@@ -134,7 +135,7 @@ struct CustomTaskListView: View {
             let sourceFrame = rowFrames[listTasks[source].id]
         else { return 0 }
 
-        let displacement = sourceFrame.height + rowSpacing
+        let displacement = sourceFrame.height
 
         if source < resolvedTarget, index > source, index <= resolvedTarget {
             return -displacement
@@ -181,10 +182,10 @@ struct CustomTaskListView: View {
     private func rowDisplacement(for sourceIndex: Int) -> CGFloat {
         let taskID = listTasks[sourceIndex].id
         if let frame = rowFrames[taskID] {
-            return frame.height + rowSpacing
+            return frame.height
         }
         if let frame = rowFrames.values.first {
-            return frame.height + rowSpacing
+            return frame.height
         }
         return 0
     }
@@ -215,10 +216,10 @@ struct CustomTaskListView: View {
     }
 
     private func commitRemoval(action: () -> Void) {
-        action()
         var transaction = Transaction()
         transaction.disablesAnimations = true
         withTransaction(transaction) {
+            action()
             frozenTasks = nil
             isRemovingTask = false
         }
