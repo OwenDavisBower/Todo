@@ -46,8 +46,6 @@ struct TaskRowView: View {
                 reorderHandle
             }
 
-            completionIndicator
-
             HStack(spacing: 12) {
                 Text(task.title)
                     .font(.body.weight(.medium))
@@ -70,29 +68,6 @@ struct TaskRowView: View {
                 .fill(.white)
                 .shadow(color: AppTheme.ink.opacity(0.07), radius: 10, y: 3)
         }
-    }
-
-    private var completionIndicator: some View {
-        let progress = min(max(horizontalOffset / actionThreshold, 0), 1)
-
-        return ZStack {
-            Circle()
-                .stroke(AppTheme.mist.opacity(0.6), lineWidth: 2)
-                .frame(width: 22, height: 22)
-
-            if filter == .active {
-                Circle()
-                    .fill(AppTheme.sage.opacity(progress))
-                    .frame(width: 22, height: 22)
-
-                Image(systemName: "checkmark")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(.white)
-                    .scaleEffect(progress)
-                    .opacity(progress)
-            }
-        }
-        .animation(.easeOut(duration: 0.15), value: progress)
     }
 
     @ViewBuilder
