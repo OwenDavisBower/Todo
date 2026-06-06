@@ -49,12 +49,6 @@ struct CustomTaskListView: View {
                             endReorderDrag(task: task)
                         }
                     )
-                    .transition(
-                        .asymmetric(
-                            insertion: .opacity.combined(with: .scale(scale: 0.96, anchor: .top)),
-                            removal: .opacity
-                        )
-                    )
                     .background {
                         GeometryReader { geometry in
                             Color.clear.preference(
@@ -66,12 +60,6 @@ struct CustomTaskListView: View {
                     .zIndex(draggingTaskID == task.id ? 1 : 0)
                 }
             }
-            .animation(
-                draggingTaskID == nil && !isSettlingReorder
-                    ? .spring(response: 0.38, dampingFraction: 0.86)
-                    : nil,
-                value: tasks.map(\.id)
-            )
             .padding(.horizontal, 20)
             .padding(.vertical, 16)
         }

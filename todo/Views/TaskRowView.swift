@@ -26,7 +26,7 @@ struct TaskRowView: View {
     private let cardCornerRadius: CGFloat = 18
 
     private var shouldAnimateReorder: Bool {
-        !isDragging && !isSettling
+        !isDragging && !isSettling && !isReorderDragging
     }
 
     private var leadingSwipeProgress: CGFloat {
@@ -48,7 +48,6 @@ struct TaskRowView: View {
 
             cardContent
                 .offset(x: horizontalOffset)
-                .offset(y: reorderOffset + reorderShift)
                 .scaleEffect(isDragging && !isSettling ? 1.03 : 1)
                 .shadow(
                     color: AppTheme.ink.opacity(isDragging && !isSettling ? 0.12 : 0),
@@ -56,15 +55,15 @@ struct TaskRowView: View {
                     y: isDragging && !isSettling ? 6 : 0
                 )
         }
+        .offset(y: reorderOffset + reorderShift)
         .scaleEffect(y: isCollapsing ? 0.01 : 1, anchor: .top)
         .opacity(isCollapsing ? 0 : 1)
         .frame(maxHeight: isCollapsing ? 0 : nil)
-        .clipped()
         .contentShape(Rectangle())
         .simultaneousGesture(horizontalDragGesture)
         .animation(shouldAnimateReorder ? .spring(response: 0.32, dampingFraction: 0.86) : nil, value: isDragging)
         .animation(shouldAnimateReorder ? .interactiveSpring(response: 0.28, dampingFraction: 0.86) : nil, value: reorderShift)
-        .animation(.easeOut(duration: 0.18), value: leadingSwipeProgress > 0.35)
+        .animation(shouldAnimateReorder ? .easeOut(duration: 0.18) : nil, value: leadingSwipeProgress > 0.35)
         .transaction { transaction in
             if !shouldAnimateReorder {
                 transaction.animation = nil
@@ -234,17 +233,15 @@ struct TaskRowView: View {
 
         withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
             horizontalOffset = offset
-        }
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.24) {
+        } completion: {
             withAnimation(.spring(response: 0.34, dampingFraction: 0.9)) {
                 isCollapsing = true
             }
-        }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.46) {
-            action()
-            isPerformingAction = false
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
+                action()
+                isPerformingAction = false
+            }
         }
     }
 
