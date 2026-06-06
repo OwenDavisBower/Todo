@@ -12,6 +12,14 @@ struct AddTaskBottomSheet: View {
 
     private let cardCornerRadius: CGFloat = 18
 
+    private var trimmedTitle: String {
+        title.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var showAddButton: Bool {
+        !trimmedTitle.isEmpty
+    }
+
     var body: some View {
         VStack(spacing: 12) {
             if isTitleFocused {
@@ -50,18 +58,26 @@ struct AddTaskBottomSheet: View {
     }
 
     private var inputRow: some View {
-        HStack(spacing: 14) {
-            Image(systemName: "plus")
-                .font(.body.weight(.medium))
-                .foregroundStyle(AppTheme.mist)
-                .frame(width: 24, height: 36)
-
+        HStack(spacing: 12) {
             TextField("Add task…", text: $title)
                 .font(.body.weight(.medium))
                 .foregroundStyle(AppTheme.ink)
                 .focused($isTitleFocused)
                 .submitLabel(.done)
                 .onSubmit(submit)
+
+            if showAddButton {
+                Button(action: submit) {
+                    Text("Add")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(AppTheme.blush)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(Capsule().fill(AppTheme.ink))
+                }
+                .buttonStyle(.plain)
+                .transition(.scale(scale: 0.75).combined(with: .opacity))
+            }
         }
         .padding(.leading, 14)
         .padding(.trailing, 18)
@@ -71,6 +87,7 @@ struct AddTaskBottomSheet: View {
                 .fill(.white)
                 .shadow(color: AppTheme.ink.opacity(0.07), radius: 10, y: 3)
         }
+        .animation(.spring(response: 0.32, dampingFraction: 0.82), value: showAddButton)
     }
 
     private var expandedOptions: some View {
@@ -88,33 +105,14 @@ struct AddTaskBottomSheet: View {
                 .tint(AppTheme.ink)
                 .foregroundStyle(AppTheme.ink)
             }
-
-            HStack {
-                Spacer()
-                Button(action: submit) {
-                    Text("Add Task")
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(AppTheme.blush)
-                        .padding(.horizontal, 24)
-                        .padding(.vertical, 12)
-                        .background(
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .fill(AppTheme.ink)
-                        )
-                }
-                .buttonStyle(.plain)
-                .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                .opacity(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.45 : 1)
-            }
         }
         .padding(.horizontal, 14)
     }
 
     private func submit() {
-        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
+        guard !trimmedTitle.isEmpty else { return }
 
-        onAdd(trimmed, hasDueDate ? dueDate : nil)
+        onAdd(trimmedTitle, hasDueDate ? dueDate : nil)
         title = ""
         hasDueDate = false
         dueDate = Calendar.current.startOfDay(for: Date())
