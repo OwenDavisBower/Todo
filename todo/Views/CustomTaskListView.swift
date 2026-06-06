@@ -8,7 +8,6 @@ struct CustomTaskListView: View {
     let onComplete: (Task) -> Void
     let onRestore: (Task) -> Void
     let onDelete: (Task) -> Void
-    let onReorder: (IndexSet, Int) -> Void
 
     @State private var draggingTaskID: UUID?
     @State private var reorderDragOffset: CGFloat = 0
@@ -138,9 +137,7 @@ struct CustomTaskListView: View {
 
         let ordered = displayTasks
         withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
-            for (index, task) in ordered.enumerated() {
-                task.sortOrder = index
-            }
+            TaskStore.applySortOrder(to: ordered)
         }
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
     }

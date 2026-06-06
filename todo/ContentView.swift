@@ -98,9 +98,6 @@ struct ContentView: View {
                     withAnimation {
                         modelContext.delete(task)
                     }
-                },
-                onReorder: { source, destination in
-                    TaskStore.reorder(tasks, from: source, to: destination)
                 }
             )
         }
