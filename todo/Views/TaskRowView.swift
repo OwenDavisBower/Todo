@@ -84,7 +84,6 @@ struct TaskRowView: View {
                 Text(task.title)
                     .font(.body.weight(.medium))
                     .foregroundStyle(titleColor)
-                    .strikethrough(isCompletingSwipe && leadingSwipeProgress > 0.45, color: AppTheme.mist)
                     .multilineTextAlignment(.leading)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
