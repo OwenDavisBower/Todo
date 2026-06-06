@@ -117,11 +117,11 @@ struct TaskRowView: View {
     private var leadingActionBackground: some View {
         HStack(spacing: 0) {
             RoundedRectangle(cornerRadius: cardCornerRadius, style: .continuous)
-                .fill(AppTheme.sage)
+                .fill(filter == .active ? AppTheme.sage : AppTheme.ink)
                 .overlay(alignment: .leading) {
-                    Image(systemName: filter == .active ? "checkmark.circle.fill" : "arrow.uturn.backward.circle.fill")
+                    Image(systemName: filter == .active ? "checkmark.circle.fill" : "trash.circle.fill")
                         .font(.title)
-                        .foregroundStyle(.white.opacity(0.95))
+                        .foregroundStyle(filter == .active ? .white.opacity(0.95) : AppTheme.blush.opacity(0.95))
                         .padding(.leading, 24)
                         .scaleEffect(0.72 + leadingSwipeProgress * 0.28)
                         .symbolEffect(.bounce, value: leadingSwipeProgress >= 1)
@@ -138,11 +138,11 @@ struct TaskRowView: View {
             Spacer(minLength: 0)
 
             RoundedRectangle(cornerRadius: cardCornerRadius, style: .continuous)
-                .fill(AppTheme.ink)
+                .fill(filter == .active ? AppTheme.ink : AppTheme.sage)
                 .overlay(alignment: .trailing) {
-                    Image(systemName: "trash.circle.fill")
+                    Image(systemName: filter == .active ? "trash.circle.fill" : "arrow.uturn.backward.circle.fill")
                         .font(.title)
-                        .foregroundStyle(AppTheme.blush.opacity(0.95))
+                        .foregroundStyle(filter == .active ? AppTheme.blush.opacity(0.95) : .white.opacity(0.95))
                         .padding(.trailing, 24)
                         .scaleEffect(0.72 + trailingSwipeProgress * 0.28)
                         .symbolEffect(.bounce, value: trailingSwipeProgress >= 1)
@@ -216,10 +216,14 @@ struct TaskRowView: View {
             if filter == .active {
                 performAction(offset: 500, haptic: .medium) { onComplete() }
             } else {
-                performAction(offset: 500, haptic: .medium) { onRestore() }
+                performAction(offset: 500, haptic: .rigid) { onDelete() }
             }
         } else if translation < -actionThreshold {
-            performAction(offset: -500, haptic: .rigid) { onDelete() }
+            if filter == .done {
+                performAction(offset: -500, haptic: .medium) { onRestore() }
+            } else {
+                performAction(offset: -500, haptic: .rigid) { onDelete() }
+            }
         } else {
             withAnimation(.spring(response: 0.35, dampingFraction: 0.78)) {
                 horizontalOffset = 0
