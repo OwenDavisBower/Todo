@@ -1,0 +1,12 @@
+---
+description: Do not run builds automatically after code changes
+alwaysApply: true
+---
+
+# No automatic builds
+
+Do not run `xcodebuild`, `swift build`, or other compile/build commands after each change.
+
+Only build when the user explicitly asks, when verifying a reported compile error, or when a change clearly cannot be validated without a build.
+
+After edits, rely on the linter and code review instead of building by default.
