@@ -68,15 +68,17 @@ struct AddTaskBottomSheet: View {
 
             if showAddButton {
                 Button(action: submit) {
-                    Text("Add")
+                    Image(systemName: "plus")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(AppTheme.blush)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
-                        .background(Capsule().fill(AppTheme.ink))
+                        .frame(width: 36, height: 36)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .fill(AppTheme.ink)
+                        )
                 }
                 .buttonStyle(.plain)
-                .transition(.scale(scale: 0.75).combined(with: .opacity))
+                .transition(.move(edge: .trailing).combined(with: .opacity))
             }
         }
         .padding(.leading, 14)
