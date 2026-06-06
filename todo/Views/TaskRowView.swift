@@ -28,16 +28,16 @@ struct TaskRowView: View {
             cardContent
                 .offset(x: horizontalOffset)
                 .offset(y: isDragging ? reorderOffset : 0)
-                .scaleEffect(isDragging ? 1.02 : 1)
+                .scaleEffect(isDragging ? 1.03 : 1)
                 .shadow(
-                    color: AppTheme.ink.opacity(isDragging ? 0.14 : 0),
-                    radius: isDragging ? 16 : 0,
-                    y: isDragging ? 8 : 0
+                    color: AppTheme.ink.opacity(isDragging ? 0.12 : 0),
+                    radius: isDragging ? 12 : 0,
+                    y: isDragging ? 6 : 0
                 )
         }
         .contentShape(Rectangle())
         .simultaneousGesture(horizontalDragGesture)
-        .animation(.spring(response: 0.35, dampingFraction: 0.78), value: isDragging)
+        .animation(isDragging ? nil : .spring(response: 0.32, dampingFraction: 0.86), value: isDragging)
     }
 
     private var cardContent: some View {
@@ -146,15 +146,9 @@ struct TaskRowView: View {
     }
 
     private var reorderGesture: some Gesture {
-        LongPressGesture(minimumDuration: 0.25)
-            .sequenced(before: DragGesture(minimumDistance: 0))
+        DragGesture(minimumDistance: 4, coordinateSpace: .global)
             .onChanged { value in
-                switch value {
-                case .second(true, let drag?):
-                    onReorderDragChanged(drag.translation.height)
-                default:
-                    break
-                }
+                onReorderDragChanged(value.translation.height)
             }
             .onEnded { _ in
                 onReorderDragEnded()
