@@ -37,8 +37,10 @@ struct TaskRowView: View {
         min(max(-horizontalOffset / actionThreshold, 0), 1)
     }
 
-    private var isCompletingSwipe: Bool {
-        filter == .active && leadingSwipeProgress > 0
+    private var swipeTextOpacity: Double {
+        let progress = max(leadingSwipeProgress, trailingSwipeProgress)
+        guard progress > 0 else { return 1 }
+        return 1 - Double(progress) * 0.65
     }
 
     var body: some View {
@@ -89,7 +91,7 @@ struct TaskRowView: View {
                     dueDateBadge(for: dueDate)
                 }
             }
-            .opacity(completingSwipeTextOpacity)
+            .opacity(swipeTextOpacity)
             .contentShape(Rectangle())
             .onTapGesture(perform: onTap)
 
@@ -105,11 +107,6 @@ struct TaskRowView: View {
                 .fill(.white)
                 .shadow(color: AppTheme.ink.opacity(0.07), radius: 10, y: 3)
         }
-    }
-
-    private var completingSwipeTextOpacity: Double {
-        guard isCompletingSwipe else { return 1 }
-        return 1 - Double(leadingSwipeProgress) * 0.65
     }
 
     @ViewBuilder
