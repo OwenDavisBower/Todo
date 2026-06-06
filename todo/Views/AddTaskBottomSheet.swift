@@ -54,22 +54,23 @@ struct AddTaskBottomSheet: View {
         }
     }
 
+    private var addButtonSize: CGFloat {
+        textFieldCardHeight > 0 ? textFieldCardHeight : 64
+    }
+
     private var inputRow: some View {
         HStack(spacing: 12) {
-            HStack(spacing: 14) {
-                Color.clear
-                    .frame(width: 24, height: 36)
-                    .accessibilityHidden(true)
-
-                TextField("Add task…", text: $title)
-                    .font(.body.weight(.medium))
-                    .foregroundStyle(AppTheme.ink)
-                    .focused($isTitleFocused)
-                    .submitLabel(.done)
-                    .onSubmit(submit)
-            }
-            .padding(.leading, 14)
-            .padding(.trailing, 18)
+            TextField(
+                "",
+                text: $title,
+                prompt: Text("Add task…").foregroundStyle(AppTheme.ink.opacity(0.5))
+            )
+            .font(.body.weight(.medium))
+            .foregroundStyle(AppTheme.ink)
+            .focused($isTitleFocused)
+            .submitLabel(.done)
+            .onSubmit(submit)
+            .padding(.horizontal, 18)
             .padding(.vertical, 14)
             .background {
                 RoundedRectangle(cornerRadius: cardCornerRadius, style: .continuous)
@@ -101,7 +102,7 @@ struct AddTaskBottomSheet: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(trimmedTitle.isEmpty)
-                .frame(width: 48, height: textFieldCardHeight > 0 ? textFieldCardHeight : 64)
+                .frame(width: addButtonSize, height: addButtonSize)
                 .transition(.move(edge: .trailing).combined(with: .opacity))
             }
         }
