@@ -19,6 +19,7 @@ struct TaskRowView: View {
     @State private var horizontalOffset: CGFloat = 0
     @State private var isPerformingAction = false
     @State private var isHorizontalSwipe = false
+    @State private var isReorderDragging = false
 
     private let actionThreshold: CGFloat = 80
     private let cardCornerRadius: CGFloat = 18
@@ -136,9 +137,12 @@ struct TaskRowView: View {
     private var reorderGesture: some Gesture {
         DragGesture(minimumDistance: 2, coordinateSpace: .named(listCoordinateSpace))
             .onChanged { value in
+                isReorderDragging = true
+                horizontalOffset = 0
                 onReorderDragChanged(value.translation.height)
             }
             .onEnded { _ in
+                isReorderDragging = false
                 onReorderDragEnded()
             }
     }
@@ -146,7 +150,7 @@ struct TaskRowView: View {
     private var horizontalDragGesture: some Gesture {
         DragGesture(minimumDistance: 12)
             .onChanged { value in
-                guard !isPerformingAction else { return }
+                guard !isPerformingAction, !isDragging, !isReorderDragging else { return }
 
                 if !isHorizontalSwipe {
                     let width = abs(value.translation.width)
@@ -159,7 +163,7 @@ struct TaskRowView: View {
             }
             .onEnded { value in
                 defer { isHorizontalSwipe = false }
-                guard !isPerformingAction, isHorizontalSwipe else { return }
+                guard !isPerformingAction, !isDragging, !isReorderDragging, isHorizontalSwipe else { return }
                 handleHorizontalDragEnd(translation: value.translation.width)
             }
     }
