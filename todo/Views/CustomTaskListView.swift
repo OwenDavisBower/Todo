@@ -66,6 +66,7 @@ struct CustomTaskListView: View {
             .padding(.horizontal, 20)
             .padding(.vertical, 16)
         }
+        .scrollDismissesKeyboard(.interactively)
         .scrollDisabled(draggingTaskID != nil)
         .coordinateSpace(name: listCoordinateSpace)
         .onPreferenceChange(RowFrameKey.self) { rowFrames = $0 }

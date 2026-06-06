@@ -14,7 +14,7 @@ struct ContentView: View {
     ) private var doneTasks: [Task]
 
     @State private var filter: TaskFilter = .active
-    @State private var showingAddSheet = false
+    @State private var isAddSheetExpanded = false
     @State private var editingTask: Task?
 
     var body: some View {
@@ -30,29 +30,27 @@ struct ContentView: View {
                         taskList(tasks: doneTasks, allowsReorder: false)
                     }
                 }
+                .overlay {
+                    if isAddSheetExpanded {
+                        AppTheme.ink.opacity(0.06)
+                            .ignoresSafeArea()
+                            .onTapGesture {
+                                isAddSheetExpanded = false
+                            }
+                    }
+                }
             }
             .themedBackground()
             .toolbar(.hidden, for: .navigationBar)
-            .overlay(alignment: .bottomTrailing) {
-                Button {
-                    showingAddSheet = true
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.title3.weight(.medium))
-                        .foregroundStyle(AppTheme.blush)
-                        .frame(width: 52, height: 52)
-                        .background(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .fill(AppTheme.ink)
-                        )
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if filter == .active {
+                    AddTaskBottomSheet(isExpanded: $isAddSheetExpanded) { title, dueDate in
+                        _ = TaskStore.addTask(title: title, dueDate: dueDate, in: modelContext)
+                    }
                 }
-                .padding(24)
-                .accessibilityLabel("Add task")
             }
-            .sheet(isPresented: $showingAddSheet) {
-                TaskEditSheet { title, dueDate in
-                    _ = TaskStore.addTask(title: title, dueDate: dueDate, in: modelContext)
-                }
+            .onChange(of: filter) { _, _ in
+                isAddSheetExpanded = false
             }
             .sheet(item: $editingTask) { task in
                 TaskEditSheet(task: task, navigationTitle: "Edit Task") { title, dueDate in
