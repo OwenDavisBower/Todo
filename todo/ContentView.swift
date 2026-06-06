@@ -32,20 +32,7 @@ struct ContentView: View {
                 }
             }
             .themedBackground()
-            .navigationTitle("Todo")
-            .navigationBarTitleDisplayMode(.large)
-            .themedNavigationBar()
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    NavigationLink {
-                        SettingsView()
-                    } label: {
-                        Image(systemName: "gearshape")
-                            .font(.body.weight(.light))
-                            .foregroundStyle(AppTheme.sage)
-                    }
-                }
-            }
+            .toolbar(.hidden, for: .navigationBar)
             .overlay(alignment: .bottomTrailing) {
                 Button {
                     showingAddSheet = true

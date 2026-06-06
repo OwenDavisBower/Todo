@@ -24,6 +24,15 @@ struct FilterBar: View {
                 .buttonStyle(.plain)
             }
             Spacer()
+
+            NavigationLink {
+                SettingsView()
+            } label: {
+                Image(systemName: "gearshape")
+                    .font(.caption.weight(.light))
+                    .foregroundStyle(AppTheme.sage)
+            }
+            .accessibilityLabel("Settings")
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 12)
