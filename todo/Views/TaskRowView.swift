@@ -63,7 +63,6 @@ struct TaskRowView: View {
         .simultaneousGesture(horizontalDragGesture)
         .animation(shouldAnimateReorder ? .spring(response: 0.32, dampingFraction: 0.86) : nil, value: isDragging)
         .animation(shouldAnimateReorder ? .interactiveSpring(response: 0.28, dampingFraction: 0.86) : nil, value: reorderShift)
-        .animation(shouldAnimateReorder ? .easeOut(duration: 0.18) : nil, value: leadingSwipeProgress > 0.35)
         .transaction { transaction in
             if !shouldAnimateReorder {
                 transaction.animation = nil
@@ -82,15 +81,15 @@ struct TaskRowView: View {
             HStack(spacing: 12) {
                 Text(task.title)
                     .font(.body.weight(.medium))
-                    .foregroundStyle(titleColor)
+                    .foregroundStyle(AppTheme.ink)
                     .multilineTextAlignment(.leading)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                 if let dueDate = task.dueDate {
                     dueDateBadge(for: dueDate)
-                        .opacity(isCompletingSwipe ? 1 - Double(leadingSwipeProgress) * 0.65 : 1)
                 }
             }
+            .opacity(completingSwipeTextOpacity)
             .contentShape(Rectangle())
             .onTapGesture(perform: onTap)
 
@@ -108,9 +107,9 @@ struct TaskRowView: View {
         }
     }
 
-    private var titleColor: Color {
-        guard isCompletingSwipe else { return AppTheme.ink }
-        return leadingSwipeProgress > 0.35 ? AppTheme.mist : AppTheme.ink
+    private var completingSwipeTextOpacity: Double {
+        guard isCompletingSwipe else { return 1 }
+        return 1 - Double(leadingSwipeProgress) * 0.65
     }
 
     @ViewBuilder
