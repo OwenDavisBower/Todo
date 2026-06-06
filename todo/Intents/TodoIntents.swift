@@ -108,7 +108,7 @@ struct DeleteTaskIntent: AppIntent {
         }
 
         let deletedTitle = model.title
-        context.delete(model)
+        TaskStore.delete(model, in: context)
         try context.save()
 
         return .result(value: "Removed \"\(deletedTitle)\"")

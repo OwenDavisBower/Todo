@@ -45,6 +45,15 @@ enum TaskStore {
         }
     }
 
+    static func update(_ task: Task, title: String, dueDate: Date?) {
+        task.title = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        task.dueDate = dueDate
+    }
+
+    static func delete(_ task: Task, in context: ModelContext) {
+        context.delete(task)
+    }
+
     static func findTask(id: UUID, in context: ModelContext) -> Task? {
         let taskID = id
         var descriptor = FetchDescriptor<Task>(

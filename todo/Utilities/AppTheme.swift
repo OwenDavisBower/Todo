@@ -36,4 +36,14 @@ extension View {
     func themedBackground() -> some View {
         modifier(ThemedBackground())
     }
+
+    func themedNavigationBar() -> some View {
+        toolbarColorScheme(.light, for: .navigationBar)
+            .toolbarBackground(AppTheme.background, for: .navigationBar)
+    }
+
+    func themedForm() -> some View {
+        scrollContentBackground(.hidden)
+            .themedBackground()
+    }
 }

@@ -29,8 +29,7 @@ struct ContentView: View {
             .themedBackground()
             .navigationTitle("Todo")
             .navigationBarTitleDisplayMode(.large)
-            .toolbarColorScheme(.light, for: .navigationBar)
-            .toolbarBackground(AppTheme.background, for: .navigationBar)
+            .themedNavigationBar()
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     NavigationLink {
@@ -65,12 +64,10 @@ struct ContentView: View {
             }
             .sheet(item: $editingTask) { task in
                 TaskEditSheet(task: task, navigationTitle: "Edit Task") { title, dueDate in
-                    task.title = title
-                    task.dueDate = dueDate
+                    TaskStore.update(task, title: title, dueDate: dueDate)
                 }
             }
         }
-        .tint(AppTheme.ink)
     }
 
     @ViewBuilder
@@ -96,7 +93,7 @@ struct ContentView: View {
                 },
                 onDelete: { task in
                     withAnimation {
-                        modelContext.delete(task)
+                        TaskStore.delete(task, in: modelContext)
                     }
                 }
             )

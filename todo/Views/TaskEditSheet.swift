@@ -47,12 +47,10 @@ struct TaskEditSheet: View {
                 }
                 .listRowBackground(AppTheme.surface)
             }
-            .scrollContentBackground(.hidden)
-            .themedBackground()
+            .themedForm()
             .navigationTitle(navigationTitle)
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarColorScheme(.light, for: .navigationBar)
-            .toolbarBackground(AppTheme.background, for: .navigationBar)
+            .themedNavigationBar()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
@@ -68,7 +66,6 @@ struct TaskEditSheet: View {
                 titleFocused = true
             }
         }
-        .tint(AppTheme.ink)
         .presentationBackground(AppTheme.background)
     }
 

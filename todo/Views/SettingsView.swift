@@ -29,12 +29,10 @@ struct SettingsView: View {
             }
             .listRowBackground(AppTheme.surface)
         }
-        .scrollContentBackground(.hidden)
-        .themedBackground()
+        .themedForm()
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarColorScheme(.light, for: .navigationBar)
-        .toolbarBackground(AppTheme.background, for: .navigationBar)
+        .themedNavigationBar()
     }
 
     private var appVersion: String {
