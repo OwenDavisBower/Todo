@@ -63,8 +63,16 @@ enum TaskStore {
         return try? context.fetch(descriptor).first
     }
 
-    static func tasks(withIDs ids: [UUID], in context: ModelContext) -> [Task] {
-        ids.compactMap { findTask(id: $0, in: context) }
+    static func activeTasks(withIDs ids: [UUID], in context: ModelContext) -> [Task] {
+        guard !ids.isEmpty else { return [] }
+
+        let idSet = Set(ids)
+        let tasksByID = Dictionary(
+            uniqueKeysWithValues: activeTasks(in: context)
+                .filter { idSet.contains($0.id) }
+                .map { ($0.id, $0) }
+        )
+        return ids.compactMap { tasksByID[$0] }
     }
 
     static func activeTasks(in context: ModelContext) -> [Task] {

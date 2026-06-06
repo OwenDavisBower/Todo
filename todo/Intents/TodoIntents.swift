@@ -25,34 +25,40 @@ struct TodoTaskEntity: AppEntity {
 
 struct TodoTaskEntityQuery: EntityQuery, EntityStringQuery {
     @MainActor
+    private func withContext<T>(_ work: (ModelContext) -> T) -> T {
+        work(ModelContainerProvider.makeContext())
+    }
+
+    @MainActor
     private func activeEntities(in context: ModelContext) -> [TodoTaskEntity] {
         TaskStore.activeTasks(in: context).map(TodoTaskEntity.init)
     }
 
     @MainActor
     func entities(for identifiers: [TodoTaskEntity.ID]) async throws -> [TodoTaskEntity] {
-        let context = ModelContainerProvider.makeContext()
-        return TaskStore.tasks(withIDs: identifiers, in: context).map(TodoTaskEntity.init)
+        withContext { context in
+            TaskStore.activeTasks(withIDs: identifiers, in: context).map(TodoTaskEntity.init)
+        }
     }
 
     @MainActor
     func entities(matching string: String) async throws -> [TodoTaskEntity] {
-        let context = ModelContainerProvider.makeContext()
-        let activeTasks = TaskStore.activeTasks(in: context)
-        let normalizedSearch = string.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        withContext { context in
+            let activeTasks = TaskStore.activeTasks(in: context)
+            let normalizedSearch = string.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
 
-        guard !normalizedSearch.isEmpty else {
-            return activeTasks.map(TodoTaskEntity.init)
+            guard !normalizedSearch.isEmpty else {
+                return activeTasks.map(TodoTaskEntity.init)
+            }
+
+            return TaskTitleMatching.matchingTasks(activeTasks, normalizedSearch: normalizedSearch)
+                .map(TodoTaskEntity.init)
         }
-
-        return TaskTitleMatching.matchingTasks(activeTasks, normalizedSearch: normalizedSearch)
-            .map(TodoTaskEntity.init)
     }
 
     @MainActor
     func suggestedEntities() async throws -> [TodoTaskEntity] {
-        let context = ModelContainerProvider.makeContext()
-        return activeEntities(in: context)
+        withContext { activeEntities(in: $0) }
     }
 }
 

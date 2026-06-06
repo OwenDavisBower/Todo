@@ -4,19 +4,28 @@ enum TaskTitleMatching {
     static func matchingTasks(_ tasks: [Task], normalizedSearch: String) -> [Task] {
         guard !normalizedSearch.isEmpty else { return [] }
 
-        let exact = tasks.filter { $0.title.lowercased() == normalizedSearch }
-        if !exact.isEmpty { return exact }
-
-        let contains = tasks.filter { $0.title.lowercased().contains(normalizedSearch) }
-        if !contains.isEmpty { return contains }
-
+        var exact: [Task] = []
+        var contains: [Task] = []
+        var fuzzyCandidates: [(Task, Int)] = []
         let maxDistance = max(2, normalizedSearch.count / 2)
-        let ranked = tasks.map { task in
-            (task, levenshtein(task.title.lowercased(), normalizedSearch))
+
+        for task in tasks {
+            let normalizedTitle = task.title.lowercased()
+            if normalizedTitle == normalizedSearch {
+                exact.append(task)
+            } else if normalizedTitle.contains(normalizedSearch) {
+                contains.append(task)
+            } else {
+                let distance = levenshtein(normalizedTitle, normalizedSearch)
+                if distance <= maxDistance {
+                    fuzzyCandidates.append((task, distance))
+                }
+            }
         }
-        guard let best = ranked.min(by: { $0.1 < $1.1 }), best.1 <= maxDistance else {
-            return []
-        }
+
+        if !exact.isEmpty { return exact }
+        if !contains.isEmpty { return contains }
+        guard let best = fuzzyCandidates.min(by: { $0.1 < $1.1 }) else { return [] }
         return [best.0]
     }
 

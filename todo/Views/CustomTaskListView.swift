@@ -15,6 +15,9 @@ struct CustomTaskListView: View {
     @State private var liveTaskIDs: [UUID]?
     @State private var dragCurrentIndex: Int?
     @State private var cachedTasksByID: [UUID: Task]?
+    @State private var dragStartHaptic = UIImpactFeedbackGenerator(style: .medium)
+    @State private var moveHaptic = UIImpactFeedbackGenerator(style: .soft)
+    @State private var dragEndHaptic = UIImpactFeedbackGenerator(style: .light)
 
     private let rowSpacing: CGFloat = 12
 
@@ -72,7 +75,7 @@ struct CustomTaskListView: View {
             liveTaskIDs = tasks.map(\.id)
             dragCurrentIndex = displayTasks.firstIndex { $0.id == task.id }
             draggingTaskID = task.id
-            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            impact(dragStartHaptic)
         }
 
         reorderDragOffset = translation
@@ -112,7 +115,7 @@ struct CustomTaskListView: View {
         withAnimation(.interactiveSpring(response: 0.28, dampingFraction: 0.86, blendDuration: 0.1)) {
             liveTaskIDs = ids
         }
-        UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+        impact(moveHaptic)
     }
 
     private func rowDisplacement(from: Int, to: Int) -> CGFloat {
@@ -142,7 +145,12 @@ struct CustomTaskListView: View {
         withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
             TaskStore.applySortOrder(to: ordered)
         }
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        impact(dragEndHaptic)
+    }
+
+    private func impact(_ generator: UIImpactFeedbackGenerator) {
+        generator.prepare()
+        generator.impactOccurred()
     }
 
     private func resetReorderState() {
