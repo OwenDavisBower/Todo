@@ -10,39 +10,35 @@ struct CustomTaskListView: View {
     let onDelete: (Task) -> Void
 
     @State private var draggingTaskID: UUID?
-    @State private var reorderDragOffset: CGFloat = 0
+    @State private var dragTranslation: CGFloat = 0
+    @State private var dragSourceIndex: Int?
+    @State private var dragTargetIndex: Int?
     @State private var rowFrames: [UUID: CGRect] = [:]
-    @State private var liveTaskIDs: [UUID]?
-    @State private var dragCurrentIndex: Int?
-    @State private var cachedTasksByID: [UUID: Task]?
     @State private var dragStartHaptic = UIImpactFeedbackGenerator(style: .medium)
     @State private var moveHaptic = UIImpactFeedbackGenerator(style: .soft)
     @State private var dragEndHaptic = UIImpactFeedbackGenerator(style: .light)
 
     private let rowSpacing: CGFloat = 12
-
-    private var displayTasks: [Task] {
-        guard let liveTaskIDs else { return tasks }
-        let lookup = cachedTasksByID ?? Dictionary(uniqueKeysWithValues: tasks.map { ($0.id, $0) })
-        return liveTaskIDs.compactMap { lookup[$0] }
-    }
+    private let listCoordinateSpace = "taskList"
 
     var body: some View {
         ScrollView {
-            LazyVStack(spacing: rowSpacing) {
-                ForEach(displayTasks) { task in
+            VStack(spacing: rowSpacing) {
+                ForEach(Array(tasks.enumerated()), id: \.element.id) { index, task in
                     TaskRowView(
                         task: task,
                         filter: filter,
                         showDragHandle: allowsReorder,
                         isDragging: draggingTaskID == task.id,
-                        reorderOffset: draggingTaskID == task.id ? reorderDragOffset : 0,
+                        reorderOffset: dragTranslation,
+                        reorderShift: rowShift(at: index),
+                        listCoordinateSpace: listCoordinateSpace,
                         onTap: { onEdit(task) },
                         onComplete: { onComplete(task) },
                         onRestore: { onRestore(task) },
                         onDelete: { onDelete(task) },
                         onReorderDragChanged: { translation in
-                            handleReorderDrag(task: task, translation: translation)
+                            handleReorderDrag(task: task, at: index, translation: translation)
                         },
                         onReorderDragEnded: {
                             endReorderDrag(task: task)
@@ -52,7 +48,7 @@ struct CustomTaskListView: View {
                         GeometryReader { geometry in
                             Color.clear.preference(
                                 key: RowFrameKey.self,
-                                value: [task.id: geometry.frame(in: .named("taskList"))]
+                                value: [task.id: geometry.frame(in: .named(listCoordinateSpace))]
                             )
                         }
                     }
@@ -63,89 +59,106 @@ struct CustomTaskListView: View {
             .padding(.vertical, 16)
         }
         .scrollDisabled(draggingTaskID != nil)
-        .coordinateSpace(name: "taskList")
+        .coordinateSpace(name: listCoordinateSpace)
         .onPreferenceChange(RowFrameKey.self) { rowFrames = $0 }
     }
 
-    private func handleReorderDrag(task: Task, translation: CGFloat) {
+    private func handleReorderDrag(task: Task, at index: Int, translation: CGFloat) {
         guard allowsReorder else { return }
 
         if draggingTaskID == nil {
-            cachedTasksByID = Dictionary(uniqueKeysWithValues: tasks.map { ($0.id, $0) })
-            liveTaskIDs = tasks.map(\.id)
-            dragCurrentIndex = displayTasks.firstIndex { $0.id == task.id }
             draggingTaskID = task.id
+            dragSourceIndex = index
+            dragTargetIndex = index
             impact(dragStartHaptic)
         }
 
-        reorderDragOffset = translation
+        dragTranslation = translation
 
         guard
-            let currentIndex = dragCurrentIndex,
+            let source = dragSourceIndex,
             let draggedFrame = rowFrames[task.id]
         else { return }
 
-        let draggedCenterY = draggedFrame.midY + reorderDragOffset
-        var targetIndex = currentIndex
+        let fingerY = draggedFrame.midY + translation
+        let newTarget = insertionIndex(fingerY: fingerY, source: source)
 
-        for (index, otherTask) in displayTasks.enumerated() {
-            guard otherTask.id != task.id, let frame = rowFrames[otherTask.id] else { continue }
-
-            if index < currentIndex, draggedCenterY < frame.midY {
-                targetIndex = index
-                break
-            }
-            if index > currentIndex, draggedCenterY > frame.midY {
-                targetIndex = index
-            }
-        }
-
-        guard targetIndex != currentIndex else { return }
-        moveTask(from: currentIndex, to: targetIndex, draggedFrame: draggedFrame)
-        dragCurrentIndex = targetIndex
-    }
-
-    private func moveTask(from: Int, to: Int, draggedFrame: CGRect) {
-        guard var ids = liveTaskIDs else { return }
-
-        let movedID = ids.remove(at: from)
-        ids.insert(movedID, at: to)
-        reorderDragOffset -= rowDisplacement(from: from, to: to)
-
+        guard newTarget != dragTargetIndex else { return }
         withAnimation(.interactiveSpring(response: 0.28, dampingFraction: 0.86, blendDuration: 0.1)) {
-            liveTaskIDs = ids
+            dragTargetIndex = newTarget
         }
         impact(moveHaptic)
     }
 
-    private func rowDisplacement(from: Int, to: Int) -> CGFloat {
-        guard from != to else { return 0 }
+    private func insertionIndex(fingerY: CGFloat, source: Int) -> Int {
+        var target = source
 
-        if to > from {
-            return (from + 1 ... to).reduce(into: CGFloat.zero) { total, index in
-                let task = displayTasks[index]
-                let height = rowFrames[task.id]?.height ?? 0
-                total += height + rowSpacing
+        for (index, task) in tasks.enumerated() {
+            guard index != source, let frame = rowFrames[task.id] else { continue }
+
+            let midY = frame.midY + rowShift(at: index, target: target)
+
+            if index < source, fingerY < midY {
+                target = index
+                break
+            }
+            if index > source, fingerY > midY {
+                target = index
             }
         }
 
-        return (to ..< from).reduce(into: CGFloat.zero) { total, index in
-            let task = displayTasks[index]
-            let height = rowFrames[task.id]?.height ?? 0
-            total -= height + rowSpacing
+        return target
+    }
+
+    private func rowShift(at index: Int, target: Int? = nil) -> CGFloat {
+        guard
+            let source = dragSourceIndex,
+            let resolvedTarget = target ?? dragTargetIndex,
+            source != resolvedTarget,
+            draggingTaskID != tasks[index].id,
+            let sourceFrame = rowFrames[tasks[source].id]
+        else { return 0 }
+
+        let displacement = sourceFrame.height + rowSpacing
+
+        if source < resolvedTarget, index > source, index <= resolvedTarget {
+            return -displacement
         }
+        if source > resolvedTarget, index >= resolvedTarget, index < source {
+            return displacement
+        }
+        return 0
     }
 
     private func endReorderDrag(task: Task) {
-        defer { resetReorderState() }
+        guard allowsReorder, draggingTaskID == task.id else {
+            resetReorderState()
+            return
+        }
 
-        guard allowsReorder, draggingTaskID == task.id, liveTaskIDs != nil else { return }
+        defer { impact(dragEndHaptic) }
 
-        let ordered = displayTasks
+        guard
+            let source = dragSourceIndex,
+            let target = dragTargetIndex,
+            source != target
+        else {
+            withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
+                resetReorderState()
+            }
+            return
+        }
+
+        var ordered = tasks
+        ordered.move(
+            fromOffsets: IndexSet(integer: source),
+            toOffset: target > source ? target + 1 : target
+        )
+
         withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
             TaskStore.applySortOrder(to: ordered)
+            resetReorderState()
         }
-        impact(dragEndHaptic)
     }
 
     private func impact(_ generator: UIImpactFeedbackGenerator) {
@@ -155,10 +168,9 @@ struct CustomTaskListView: View {
 
     private func resetReorderState() {
         draggingTaskID = nil
-        reorderDragOffset = 0
-        liveTaskIDs = nil
-        dragCurrentIndex = nil
-        cachedTasksByID = nil
+        dragTranslation = 0
+        dragSourceIndex = nil
+        dragTargetIndex = nil
     }
 }
 
