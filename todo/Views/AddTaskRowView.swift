@@ -21,21 +21,24 @@ struct AddTaskRowView: View {
 
     var body: some View {
         HStack(spacing: 14) {
-            TextField(
-                "",
-                text: $title,
-                prompt: Text("Add task…").foregroundStyle(AppTheme.ink.opacity(0.5))
-            )
-            .font(.body.weight(.medium))
-            .foregroundStyle(AppTheme.ink)
-            .focused($isFocused)
-            .submitLabel(.done)
-            .onSubmit(submit)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            HStack(spacing: 12) {
+                TextField(
+                    "",
+                    text: $title,
+                    prompt: Text("Add task…").foregroundStyle(AppTheme.ink.opacity(0.5))
+                )
+                .font(.body.weight(.medium))
+                .foregroundStyle(AppTheme.ink)
+                .focused($isFocused)
+                .submitLabel(.done)
+                .onSubmit(submit)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
 
             calendarButton
             addButton
         }
+        .frame(minHeight: 36)
         .padding(.leading, 14)
         .padding(.trailing, 18)
         .padding(.vertical, 14)
@@ -68,10 +71,12 @@ struct AddTaskRowView: View {
         } label: {
             if let dueDate {
                 dueDateBadge(for: dueDate)
+                    .frame(minHeight: 36)
             } else {
                 Image(systemName: "calendar")
                     .font(.body.weight(.medium))
                     .foregroundStyle(AppTheme.mist)
+                    .frame(width: 24, height: 36)
             }
         }
         .buttonStyle(.plain)
