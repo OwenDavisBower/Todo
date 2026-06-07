@@ -53,6 +53,11 @@ struct CustomTaskListView: View {
                         scrollToAddRow(using: proxy)
                     }
                 }
+                .onChange(of: tasks.count) { oldCount, newCount in
+                    if showAddRow, newCount > oldCount {
+                        scrollToAddRow(using: proxy)
+                    }
+                }
                 .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { notification in
                     guard
                         let frame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect
