@@ -8,7 +8,10 @@ struct AddTaskRowView: View {
     @State private var title = ""
     @State private var dueDate: Date?
     @State private var isShowingDatePicker = false
+    @State private var isVisible = false
     @FocusState private var isFocused: Bool
+
+    private let presentationAnimation = Animation.spring(response: 0.38, dampingFraction: 0.82)
 
     private let cardCornerRadius: CGFloat = 18
 
@@ -41,14 +44,20 @@ struct AddTaskRowView: View {
                 .fill(.white)
                 .shadow(color: AppTheme.ink.opacity(0.07), radius: 10, y: 3)
         }
+        .opacity(isVisible ? 1 : 0)
+        .offset(y: isVisible ? 0 : 14)
+        .scaleEffect(isVisible ? 1 : 0.97, anchor: .bottom)
         .onAppear {
+            withAnimation(presentationAnimation) {
+                isVisible = true
+            }
             if autofocus {
                 isFocused = true
             }
         }
         .onChange(of: isFocused) { _, focused in
             if !focused, trimmedTitle.isEmpty {
-                onDismissWhenEmpty?()
+                dismissWhenEmpty()
             }
         }
     }
@@ -113,6 +122,14 @@ struct AddTaskRowView: View {
         title = ""
         dueDate = nil
         isFocused = true
+    }
+
+    private func dismissWhenEmpty() {
+        withAnimation(presentationAnimation) {
+            isVisible = false
+        } completion: {
+            onDismissWhenEmpty?()
+        }
     }
 }
 

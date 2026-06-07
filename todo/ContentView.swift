@@ -37,11 +37,14 @@ struct ContentView: View {
             .overlay(alignment: .bottomTrailing) {
                 if filter == .active, !isShowingAddRow {
                     addTaskButton
+                        .transition(.scale.combined(with: .opacity))
                 }
             }
             .onChange(of: filter) { _, _ in
-                isShowingAddRow = false
-                shouldAutofocusAddRow = false
+                withAnimation(Self.addRowAnimation) {
+                    isShowingAddRow = false
+                    shouldAutofocusAddRow = false
+                }
             }
             .sheet(item: $editingTask) { task in
                 TaskEditSheet(task: task, navigationTitle: "Edit Task") { title, dueDate in
@@ -51,10 +54,14 @@ struct ContentView: View {
         }
     }
 
+    private static let addRowAnimation = Animation.spring(response: 0.38, dampingFraction: 0.82)
+
     private var addTaskButton: some View {
         Button {
-            shouldAutofocusAddRow = true
-            isShowingAddRow = true
+            withAnimation(Self.addRowAnimation) {
+                shouldAutofocusAddRow = true
+                isShowingAddRow = true
+            }
         } label: {
             Image(systemName: "plus")
                 .font(.title3.weight(.semibold))
@@ -99,8 +106,10 @@ struct ContentView: View {
                     shouldAutofocusAddRow = false
                 },
                 onDismissAddRow: {
-                    isShowingAddRow = false
-                    shouldAutofocusAddRow = false
+                    withAnimation(Self.addRowAnimation) {
+                        isShowingAddRow = false
+                        shouldAutofocusAddRow = false
+                    }
                 }
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)

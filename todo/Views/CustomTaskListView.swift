@@ -128,6 +128,7 @@ struct CustomTaskListView: View {
                         }
                     }
                     .id(addRowID)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
 
                 Spacer(minLength: 0)
