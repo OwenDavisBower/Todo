@@ -95,12 +95,6 @@ struct TaskRowView: View {
 
     private var cardContent: some View {
         HStack(spacing: 14) {
-            if showDragHandle {
-                reorderHandle
-            } else {
-                leadingSpacer
-            }
-
             HStack(spacing: 12) {
                 Text(task.title)
                     .font(.body.weight(.medium))
@@ -118,6 +112,10 @@ struct TaskRowView: View {
 
             if filter == .done {
                 restoreButton
+            }
+
+            if showDragHandle {
+                reorderHandle
             }
         }
         .padding(.leading, 14)
@@ -166,12 +164,6 @@ struct TaskRowView: View {
                 }
         }
         .opacity(horizontalOffset < 0 ? trailingSwipeProgress : 0)
-    }
-
-    private var leadingSpacer: some View {
-        Color.clear
-            .frame(width: 24, height: 36)
-            .accessibilityHidden(true)
     }
 
     private var restoreButton: some View {

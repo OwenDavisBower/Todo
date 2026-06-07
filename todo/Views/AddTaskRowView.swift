@@ -16,10 +16,6 @@ struct AddTaskRowView: View {
 
     var body: some View {
         HStack(spacing: 14) {
-            Color.clear
-                .frame(width: 24, height: 36)
-                .accessibilityHidden(true)
-
             TextField(
                 "",
                 text: $title,
