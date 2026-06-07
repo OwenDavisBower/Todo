@@ -1,40 +1,5 @@
 import SwiftUI
 
-private struct ListDisplayPin {
-    enum Reason {
-        case removal
-        case reorder
-    }
-
-    let tasks: [Task]
-    let ids: [UUID]
-    let reason: Reason
-
-    init(tasks: [Task], reason: Reason) {
-        self.tasks = tasks
-        self.ids = tasks.map(\.id)
-        self.reason = reason
-    }
-
-    static func afterReorderSettlement(_ ordered: [Task]?, replacing current: ListDisplayPin?) -> ListDisplayPin? {
-        if let ordered {
-            return ListDisplayPin(tasks: ordered, reason: .reorder)
-        }
-        if current?.reason == .reorder {
-            return nil
-        }
-        return current
-    }
-
-    static func matchesTasks(_ tasks: [Task], ids: [UUID]) -> Bool {
-        guard tasks.count == ids.count else { return false }
-        for (task, id) in zip(tasks, ids) {
-            if task.id != id { return false }
-        }
-        return true
-    }
-}
-
 struct CustomTaskListView: View {
     let tasks: [Task]
     let filter: TaskFilter
@@ -79,12 +44,12 @@ struct CustomTaskListView: View {
                 .onPreferenceChange(RowFrameKey.self) { rowFrames = $0 }
                 .onChange(of: showAddRow) { _, isShowing in
                     if isShowing {
-                        scrollToAddRow(using: proxy)
+                        scheduleScrollToAddRow(using: proxy)
                     }
                 }
                 .onChange(of: tasks.count) { oldCount, newCount in
                     if showAddRow, newCount > oldCount {
-                        scrollToAddRow(using: proxy)
+                        scheduleScrollToAddRow(using: proxy)
                     }
                 }
                 .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { notification in
@@ -92,9 +57,7 @@ struct CustomTaskListView: View {
                         let frame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect
                     else { return }
                     keyboardHeight = frame.height
-                    if showAddRow {
-                        scrollToAddRow(using: proxy)
-                    }
+                    scheduleScrollToAddRow(using: proxy)
                 }
                 .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
                     keyboardHeight = 0
@@ -212,7 +175,12 @@ struct CustomTaskListView: View {
         }
     }
 
-    private func scrollToAddRow(using proxy: ScrollViewProxy) {
+    /// Scrolls to the add row after layout settles. The row is inserted with animation
+    /// and the keyboard shifts content, so a short delay plus a follow-up scroll keeps
+    /// the field visible above the keyboard.
+    private func scheduleScrollToAddRow(using proxy: ScrollViewProxy) {
+        guard showAddRow else { return }
+
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
             withAnimation(.easeOut(duration: 0.25)) {
                 proxy.scrollTo(addRowID, anchor: .bottom)

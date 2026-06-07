@@ -287,18 +287,22 @@ final class TaskReorderCoordinator {
         invalidateShiftCache()
     }
 
-    private func impact(_ style: UIImpactFeedbackGenerator.FeedbackStyle) {
+    private func impact(_ style: HapticImpact) {
         let generator: UIImpactFeedbackGenerator
         switch style {
         case .light: generator = lightImpact
         case .medium: generator = mediumImpact
         case .soft: generator = softImpact
-        default:
-            generator = UIImpactFeedbackGenerator(style: style)
         }
         generator.prepare()
         generator.impactOccurred()
     }
+}
+
+private enum HapticImpact {
+    case light
+    case medium
+    case soft
 }
 
 private struct ShiftCacheKey: Equatable {
