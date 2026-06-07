@@ -13,24 +13,19 @@ struct CustomTaskListView: View {
     let onAddTask: (String, Date?) -> Void
     let onDismissAddRow: () -> Void
 
-    @State private var draggingTaskID: UUID?
-    @State private var dragTranslation: CGFloat = 0
-    @State private var dragSourceIndex: Int?
-    @State private var dragTargetIndex: Int?
-    @State private var isSettlingReorder = false
+    @State private var reorder = TaskReorderCoordinator()
     @State private var frozenTasks: [Task]?
     @State private var isRemovingTask = false
     @State private var rowFrames: [UUID: CGRect] = [:]
-    @State private var dragStartHaptic = UIImpactFeedbackGenerator(style: .medium)
-    @State private var moveHaptic = UIImpactFeedbackGenerator(style: .soft)
-    @State private var dragEndHaptic = UIImpactFeedbackGenerator(style: .light)
     @State private var keyboardHeight: CGFloat = 0
 
     private let rowSpacing: CGFloat = 12
     private let listCoordinateSpace = "taskList"
     private let addRowID = "addTaskRow"
 
-    private var listTasks: [Task] { frozenTasks ?? tasks }
+    private var listTasks: [Task] {
+        reorder.displayTasks(fallback: frozenTasks ?? tasks)
+    }
 
     var body: some View {
         GeometryReader { viewport in
@@ -45,7 +40,7 @@ struct CustomTaskListView: View {
                 .background(AppTheme.background.ignoresSafeArea())
                 .scrollContentBackground(.hidden)
                 .scrollDismissesKeyboard(.interactively)
-                .scrollDisabled(draggingTaskID != nil)
+                .scrollDisabled(reorder.isDragging)
                 .coordinateSpace(name: listCoordinateSpace)
                 .onPreferenceChange(RowFrameKey.self) { rowFrames = $0 }
                 .onChange(of: showAddRow) { _, isShowing in
@@ -81,10 +76,10 @@ struct CustomTaskListView: View {
                         task: task,
                         filter: filter,
                         showDragHandle: allowsReorder,
-                        isDragging: draggingTaskID == task.id,
-                        isSettling: isSettlingReorder,
-                        reorderOffset: draggingTaskID == task.id ? dragTranslation : 0,
-                        reorderShift: rowShift(at: index),
+                        isDragging: reorder.draggingTaskID == task.id,
+                        isSettling: reorder.isSettling,
+                        reorderOffset: reorder.draggingTaskID == task.id ? reorder.dragTranslation : 0,
+                        reorderShift: reorder.rowShift(at: index, listTasks: listTasks, rowFrames: rowFrames),
                         bottomSpacing: index < listTasks.count - 1 ? rowSpacing : 0,
                         listCoordinateSpace: listCoordinateSpace,
                         onTap: { onEdit(task) },
@@ -93,10 +88,22 @@ struct CustomTaskListView: View {
                         onDelete: { commitRemoval { onDelete(task) } },
                         onCollapseStarted: { freezeForRemoval() },
                         onReorderDragChanged: { translation in
-                            handleReorderDrag(task: task, at: index, translation: translation)
+                            reorder.handleDragChanged(
+                                task: task,
+                                at: index,
+                                translation: translation,
+                                tasks: tasks,
+                                rowFrames: rowFrames,
+                                allowsReorder: allowsReorder
+                            )
                         },
                         onReorderDragEnded: {
-                            endReorderDrag(task: task)
+                            reorder.endDrag(
+                                task: task,
+                                tasks: tasks,
+                                rowFrames: rowFrames,
+                                allowsReorder: allowsReorder
+                            )
                         }
                     )
                     .background {
@@ -107,7 +114,7 @@ struct CustomTaskListView: View {
                             )
                         }
                     }
-                    .zIndex(reorderZIndex(for: index, task: task))
+                    .zIndex(reorder.reorderZIndex(for: index, task: task, listTasks: listTasks, rowFrames: rowFrames))
                 }
 
                 if showAddRow {
@@ -135,9 +142,12 @@ struct CustomTaskListView: View {
             }
             .animation(.spring(response: 0.38, dampingFraction: 0.82), value: showAddRow)
         .onChange(of: tasks.map(\.id)) { _, newIDs in
-            if let frozenTasks, frozenTasks.map(\.id) == newIDs {
+            if let reorderSnapshot = reorder.snapshotTasks, reorderSnapshot.map(\.id) == newIDs {
+                reorder.clearSnapshot()
+            } else if let frozenTasks, frozenTasks.map(\.id) == newIDs {
                 self.frozenTasks = nil
-            } else if draggingTaskID == nil, !isSettlingReorder, !isRemovingTask {
+            } else if !reorder.isDragging, !reorder.isSettling, !isRemovingTask {
+                reorder.clearSnapshot()
                 frozenTasks = nil
             }
         }
@@ -156,145 +166,8 @@ struct CustomTaskListView: View {
         }
     }
 
-    private func handleReorderDrag(task: Task, at index: Int, translation: CGFloat) {
-        guard allowsReorder else { return }
-
-        if draggingTaskID == nil {
-            frozenTasks = tasks
-            draggingTaskID = task.id
-            dragSourceIndex = index
-            dragTargetIndex = index
-            impact(dragStartHaptic)
-        }
-
-        dragTranslation = translation
-
-        guard
-            let source = dragSourceIndex,
-            let draggedFrame = rowFrames[task.id]
-        else { return }
-
-        let fingerY = draggedFrame.midY + translation
-        let newTarget = insertionIndex(fingerY: fingerY, source: source)
-
-        guard newTarget != dragTargetIndex else { return }
-        withAnimation(.interactiveSpring(response: 0.28, dampingFraction: 0.86, blendDuration: 0.1)) {
-            dragTargetIndex = newTarget
-        }
-        impact(moveHaptic)
-    }
-
-    private func insertionIndex(fingerY: CGFloat, source: Int) -> Int {
-        var target = source
-
-        for (index, task) in listTasks.enumerated() {
-            guard index != source, let frame = rowFrames[task.id] else { continue }
-
-            let midY = frame.midY + rowShift(at: index, target: target)
-
-            if index < source, fingerY < midY {
-                target = index
-                break
-            }
-            if index > source, fingerY > midY {
-                target = index
-            }
-        }
-
-        return target
-    }
-
-    private func reorderZIndex(for index: Int, task: Task) -> Double {
-        if draggingTaskID == task.id { return 2 }
-        if rowShift(at: index) != 0 { return 1 }
-        return 0
-    }
-
-    private func rowShift(at index: Int, target: Int? = nil) -> CGFloat {
-        guard
-            let source = dragSourceIndex,
-            let resolvedTarget = target ?? dragTargetIndex,
-            source != resolvedTarget,
-            draggingTaskID != listTasks[index].id,
-            let sourceFrame = rowFrames[listTasks[source].id]
-        else { return 0 }
-
-        let displacement = sourceFrame.height
-
-        if source < resolvedTarget, index > source, index <= resolvedTarget {
-            return -displacement
-        }
-        if source > resolvedTarget, index >= resolvedTarget, index < source {
-            return displacement
-        }
-        return 0
-    }
-
-    private func endReorderDrag(task: Task) {
-        guard allowsReorder, draggingTaskID == task.id else {
-            frozenTasks = nil
-            resetReorderState()
-            return
-        }
-
-        defer { impact(dragEndHaptic) }
-
-        guard
-            let source = dragSourceIndex,
-            let target = dragTargetIndex
-        else {
-            settleAndReset(reorderedTasks: nil)
-            return
-        }
-
-        let settleTranslation = CGFloat(target - source) * rowDisplacement(for: source)
-
-        guard source != target else {
-            settleAndReset(reorderedTasks: nil, settleTranslation: 0)
-            return
-        }
-
-        var ordered = listTasks
-        ordered.move(
-            fromOffsets: IndexSet(integer: source),
-            toOffset: target > source ? target + 1 : target
-        )
-
-        settleAndReset(reorderedTasks: ordered, settleTranslation: settleTranslation)
-    }
-
-    private func rowDisplacement(for sourceIndex: Int) -> CGFloat {
-        let taskID = listTasks[sourceIndex].id
-        if let frame = rowFrames[taskID] {
-            return frame.height
-        }
-        if let frame = rowFrames.values.first {
-            return frame.height
-        }
-        return 0
-    }
-
-    private func settleAndReset(reorderedTasks: [Task]?, settleTranslation: CGFloat = 0) {
-        isSettlingReorder = true
-
-        withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
-            dragTranslation = settleTranslation
-        } completion: {
-            var transaction = Transaction()
-            transaction.disablesAnimations = true
-            withTransaction(transaction) {
-                if let reorderedTasks {
-                    frozenTasks = reorderedTasks
-                    TaskStore.applySortOrder(to: reorderedTasks)
-                }
-                resetReorderState()
-                isSettlingReorder = false
-            }
-        }
-    }
-
     private func freezeForRemoval() {
-        guard frozenTasks == nil else { return }
+        guard frozenTasks == nil, reorder.snapshotTasks == nil else { return }
         frozenTasks = tasks
         isRemovingTask = true
     }
@@ -307,18 +180,6 @@ struct CustomTaskListView: View {
             frozenTasks = nil
             isRemovingTask = false
         }
-    }
-
-    private func impact(_ generator: UIImpactFeedbackGenerator) {
-        generator.prepare()
-        generator.impactOccurred()
-    }
-
-    private func resetReorderState() {
-        draggingTaskID = nil
-        dragTranslation = 0
-        dragSourceIndex = nil
-        dragTargetIndex = nil
     }
 }
 
