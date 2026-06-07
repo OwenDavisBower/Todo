@@ -101,11 +101,6 @@ struct CustomTaskListView: View {
                 }
             }
         }
-        .onAppear {
-            reorder.onSettledDisplayTasks = { ordered in
-                displayPin = ListDisplayPin.afterReorderSettlement(ordered, replacing: displayPin)
-            }
-        }
     }
 
     private var listContent: some View {
@@ -153,7 +148,15 @@ struct CustomTaskListView: View {
                                 listTasks: listTasks,
                                 rowFrames: rowFrames,
                                 allowsReorder: allowsReorder
-                            )
+                            ) { ordered in
+                                if let ordered {
+                                    TaskStore.applySortOrder(to: ordered)
+                                }
+                                displayPin = ListDisplayPin.afterReorderSettlement(
+                                    ordered,
+                                    replacing: displayPin
+                                )
+                            }
                         }
                     )
                     .background {

@@ -22,9 +22,11 @@ final class TaskReorderCoordinator {
     private var mediumImpact = UIImpactFeedbackGenerator(style: .medium)
     private var softImpact = UIImpactFeedbackGenerator(style: .soft)
 
+    private var cachedShifts: [UUID: CGFloat] = [:]
+    private var shiftCacheKey: ShiftCacheKey?
+
     var isDragging: Bool { draggingTaskID != nil }
     var isInteractionActive: Bool { isDragging || isSettling }
-    var onSettledDisplayTasks: (([Task]?) -> Void)?
 
     func presentation(
         for task: Task,
@@ -32,8 +34,10 @@ final class TaskReorderCoordinator {
         listTasks: [Task],
         rowFrames: [UUID: CGRect]
     ) -> ReorderRowPresentation {
+        updateShiftCache(listTasks: listTasks, rowFrames: rowFrames)
+
         let isDraggingRow = draggingTaskID == task.id
-        let shift = rowShift(at: index, listTasks: listTasks, rowFrames: rowFrames)
+        let shift = cachedShifts[task.id] ?? 0
         let zIndex: Double = isDraggingRow ? 2 : (shift != 0 ? 1 : 0)
         return ReorderRowPresentation(
             isDragging: isDraggingRow,
@@ -80,6 +84,7 @@ final class TaskReorderCoordinator {
         withAnimation(.interactiveSpring(response: 0.28, dampingFraction: 0.86, blendDuration: 0.1)) {
             dragTargetIndex = newTarget
         }
+        invalidateShiftCache()
         impact(.soft)
     }
 
@@ -87,10 +92,11 @@ final class TaskReorderCoordinator {
         task: Task,
         listTasks: [Task],
         rowFrames: [UUID: CGRect],
-        allowsReorder: Bool
+        allowsReorder: Bool,
+        onSettled: @escaping ([Task]?) -> Void
     ) {
         guard allowsReorder, draggingTaskID == task.id else {
-            cancelDrag()
+            cancelDrag(onSettled: onSettled)
             return
         }
 
@@ -121,10 +127,18 @@ final class TaskReorderCoordinator {
             finalTranslation = 0
         }
 
-        settle(reorderedTasks: reorderedTasks, settleTranslation: finalTranslation)
+        settle(
+            reorderedTasks: reorderedTasks,
+            settleTranslation: finalTranslation,
+            onSettled: onSettled
+        )
     }
 
-    private func settle(reorderedTasks: [Task]?, settleTranslation: CGFloat) {
+    private func settle(
+        reorderedTasks: [Task]?,
+        settleTranslation: CGFloat,
+        onSettled: @escaping ([Task]?) -> Void
+    ) {
         isSettling = true
 
         withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
@@ -133,20 +147,15 @@ final class TaskReorderCoordinator {
             var transaction = Transaction()
             transaction.disablesAnimations = true
             withTransaction(transaction) {
-                if let reorderedTasks {
-                    TaskStore.applySortOrder(to: reorderedTasks)
-                    self.onSettledDisplayTasks?(reorderedTasks)
-                } else {
-                    self.onSettledDisplayTasks?(nil)
-                }
+                onSettled(reorderedTasks)
                 self.resetDragState()
                 self.isSettling = false
             }
         }
     }
 
-    private func cancelDrag() {
-        onSettledDisplayTasks?(nil)
+    private func cancelDrag(onSettled: @escaping ([Task]?) -> Void) {
+        onSettled(nil)
         resetDragState()
     }
 
@@ -161,11 +170,12 @@ final class TaskReorderCoordinator {
         for (index, task) in listTasks.enumerated() {
             guard index != source, let frame = rowFrames[task.id] else { continue }
 
-            let midY = frame.midY + rowShift(
+            let midY = frame.midY + computeRowShift(
                 at: index,
+                source: source,
+                target: target,
                 listTasks: listTasks,
-                rowFrames: rowFrames,
-                target: target
+                rowFrames: rowFrames
             )
 
             if index < source, fingerY < midY {
@@ -180,23 +190,59 @@ final class TaskReorderCoordinator {
         return target
     }
 
-    private func rowShift(
-        at index: Int,
-        listTasks: [Task],
-        rowFrames: [UUID: CGRect],
-        target: Int? = nil
-    ) -> CGFloat {
+    private func updateShiftCache(listTasks: [Task], rowFrames: [UUID: CGRect]) {
         guard
             let source = dragSourceIndex,
-            let resolvedTarget = target ?? dragTargetIndex,
-            source != resolvedTarget,
+            let target = dragTargetIndex,
+            source != target
+        else {
+            if !cachedShifts.isEmpty {
+                cachedShifts = [:]
+                shiftCacheKey = nil
+            }
+            return
+        }
+
+        let framePositions = listTasks.map { rowFrames[$0.id]?.minY ?? 0 }
+        let key = ShiftCacheKey(source: source, target: target, framePositions: framePositions)
+        guard key != shiftCacheKey else { return }
+
+        shiftCacheKey = key
+        cachedShifts = Dictionary(uniqueKeysWithValues: listTasks.enumerated().map { index, task in
+            (
+                task.id,
+                computeRowShift(
+                    at: index,
+                    source: source,
+                    target: target,
+                    listTasks: listTasks,
+                    rowFrames: rowFrames
+                )
+            )
+        })
+    }
+
+    private func invalidateShiftCache() {
+        cachedShifts = [:]
+        shiftCacheKey = nil
+    }
+
+    private func computeRowShift(
+        at index: Int,
+        source: Int,
+        target: Int,
+        listTasks: [Task],
+        rowFrames: [UUID: CGRect]
+    ) -> CGFloat {
+        guard
+            source != target,
             draggingTaskID != listTasks[index].id
         else { return 0 }
 
-        if source < resolvedTarget, index > source, index <= resolvedTarget {
+        if source < target, index > source, index <= target {
             return -rowGap(from: index - 1, to: index, listTasks: listTasks, rowFrames: rowFrames)
         }
-        if source > resolvedTarget, index >= resolvedTarget, index < source {
+        if source > target, index >= target, index < source {
             return rowGap(from: index, to: index + 1, listTasks: listTasks, rowFrames: rowFrames)
         }
         return 0
@@ -238,6 +284,7 @@ final class TaskReorderCoordinator {
         dragTranslation = 0
         dragSourceIndex = nil
         dragTargetIndex = nil
+        invalidateShiftCache()
     }
 
     private func impact(_ style: UIImpactFeedbackGenerator.FeedbackStyle) {
@@ -252,4 +299,10 @@ final class TaskReorderCoordinator {
         generator.prepare()
         generator.impactOccurred()
     }
+}
+
+private struct ShiftCacheKey: Equatable {
+    let source: Int
+    let target: Int
+    let framePositions: [CGFloat]
 }
