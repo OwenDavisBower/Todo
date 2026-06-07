@@ -40,6 +40,7 @@ struct ContentView: View {
                         .transition(.scale.combined(with: .opacity))
                 }
             }
+            .animation(Self.addRowAnimation, value: isShowingAddRow)
             .onChange(of: filter) { _, _ in
                 withAnimation(Self.addRowAnimation) {
                     isShowingAddRow = false

@@ -133,6 +133,7 @@ struct CustomTaskListView: View {
 
                 Spacer(minLength: 0)
             }
+            .animation(.spring(response: 0.38, dampingFraction: 0.82), value: showAddRow)
         .onChange(of: tasks.map(\.id)) { _, newIDs in
             if let frozenTasks, frozenTasks.map(\.id) == newIDs {
                 self.frozenTasks = nil

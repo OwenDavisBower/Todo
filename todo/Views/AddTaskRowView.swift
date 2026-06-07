@@ -125,11 +125,7 @@ struct AddTaskRowView: View {
     }
 
     private func dismissWhenEmpty() {
-        withAnimation(presentationAnimation) {
-            isVisible = false
-        } completion: {
-            onDismissWhenEmpty?()
-        }
+        onDismissWhenEmpty?()
     }
 }
 
