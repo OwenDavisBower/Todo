@@ -149,10 +149,10 @@ struct CustomDatePickerView: View {
             Text("\(calendar.component(.day, from: date))")
                 .font(.subheadline.weight(isSelected ? .semibold : .regular))
                 .frame(width: 36, height: 36)
-                .foregroundStyle(isSelected ? .white : AppTheme.ink)
+                .foregroundStyle(isSelected ? AppTheme.blush : AppTheme.ink)
                 .background {
                     if isSelected {
-                        Circle().fill(AppTheme.ink)
+                        Circle().fill(AppTheme.fillDark)
                     } else if isToday {
                         Circle().stroke(AppTheme.sage, lineWidth: 1.5)
                     }

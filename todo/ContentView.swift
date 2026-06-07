@@ -83,7 +83,7 @@ struct ContentView: View {
                 .background {
                     Circle()
                         .fill(AppTheme.sage)
-                        .shadow(color: AppTheme.ink.opacity(0.12), radius: 12, y: 4)
+                        .shadow(color: .black.opacity(0.15), radius: 12, y: 4)
                 }
         }
         .buttonStyle(.plain)

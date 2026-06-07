@@ -20,8 +20,8 @@ struct UndoToastView: View {
         .padding(.vertical, 14)
         .background {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(AppTheme.ink)
-                .shadow(color: AppTheme.ink.opacity(0.2), radius: 12, y: 4)
+                .fill(AppTheme.fillDark)
+                .shadow(color: .black.opacity(0.2), radius: 12, y: 4)
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(message). Undo available.")

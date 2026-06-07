@@ -41,8 +41,8 @@ struct AddTaskRowView: View {
         .padding(.vertical, 14)
         .background {
             RoundedRectangle(cornerRadius: cardCornerRadius, style: .continuous)
-                .fill(.white)
-                .shadow(color: AppTheme.ink.opacity(0.07), radius: 10, y: 3)
+                .fill(AppTheme.card)
+                .shadow(color: .black.opacity(0.08), radius: 10, y: 3)
         }
         .opacity(isVisible ? 1 : 0)
         .offset(y: isVisible ? 0 : 14)

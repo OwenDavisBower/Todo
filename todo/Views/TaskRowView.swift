@@ -57,7 +57,7 @@ struct TaskRowView: View {
                     .offset(x: horizontalOffset)
                     .scaleEffect(isDragging && !isSettling ? 1.03 : 1)
                     .shadow(
-                        color: AppTheme.ink.opacity(isDragging && !isSettling ? 0.12 : 0),
+                        color: .black.opacity(isDragging && !isSettling ? 0.15 : 0),
                         radius: isDragging && !isSettling ? 12 : 0,
                         y: isDragging && !isSettling ? 6 : 0
                     )
@@ -123,8 +123,8 @@ struct TaskRowView: View {
         .padding(.vertical, 14)
         .background {
             RoundedRectangle(cornerRadius: cardCornerRadius, style: .continuous)
-                .fill(.white)
-                .shadow(color: AppTheme.ink.opacity(0.07), radius: 10, y: 3)
+                .fill(AppTheme.card)
+                .shadow(color: .black.opacity(0.08), radius: 10, y: 3)
         }
     }
 
@@ -132,7 +132,7 @@ struct TaskRowView: View {
     private var leadingActionBackground: some View {
         HStack(spacing: 0) {
             RoundedRectangle(cornerRadius: cardCornerRadius, style: .continuous)
-                .fill(filter == .active ? AppTheme.sage : AppTheme.ink)
+                .fill(filter == .active ? AppTheme.sage : AppTheme.fillDark)
                 .overlay(alignment: .leading) {
                     Image(systemName: filter == .active ? "checkmark.circle.fill" : "trash.circle.fill")
                         .font(.title)
@@ -153,7 +153,7 @@ struct TaskRowView: View {
             Spacer(minLength: 0)
 
             RoundedRectangle(cornerRadius: cardCornerRadius, style: .continuous)
-                .fill(filter == .active ? AppTheme.ink : AppTheme.sage)
+                .fill(filter == .active ? AppTheme.fillDark : AppTheme.sage)
                 .overlay(alignment: .trailing) {
                     Image(systemName: filter == .active ? "trash.circle.fill" : "arrow.uturn.backward.circle.fill")
                         .font(.title)
