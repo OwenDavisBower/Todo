@@ -1,5 +1,22 @@
 import SwiftUI
 
+private struct ListDisplayPin {
+    enum Reason {
+        case removal
+        case reorder
+    }
+
+    let tasks: [Task]
+    let ids: [UUID]
+    let reason: Reason
+
+    init(tasks: [Task], reason: Reason) {
+        self.tasks = tasks
+        self.ids = tasks.map(\.id)
+        self.reason = reason
+    }
+}
+
 struct CustomTaskListView: View {
     let tasks: [Task]
     let filter: TaskFilter
@@ -14,8 +31,7 @@ struct CustomTaskListView: View {
     let onDismissAddRow: () -> Void
 
     @State private var reorder = TaskReorderCoordinator()
-    @State private var frozenTasks: [Task]?
-    @State private var isRemovingTask = false
+    @State private var displayPin: ListDisplayPin?
     @State private var rowFrames: [UUID: CGRect] = [:]
     @State private var keyboardHeight: CGFloat = 0
 
@@ -24,7 +40,7 @@ struct CustomTaskListView: View {
     private let addRowID = "addTaskRow"
 
     private var listTasks: [Task] {
-        reorder.displayTasks(fallback: frozenTasks ?? tasks)
+        displayPin?.tasks ?? tasks
     }
 
     var body: some View {
@@ -67,11 +83,22 @@ struct CustomTaskListView: View {
                 }
             }
         }
+        .onAppear {
+            reorder.onSettledDisplayTasks = { ordered in
+                if let ordered {
+                    displayPin = ListDisplayPin(tasks: ordered, reason: .reorder)
+                } else if displayPin?.reason == .reorder {
+                    displayPin = nil
+                }
+            }
+        }
     }
 
     private var listContent: some View {
         VStack(spacing: 0) {
                 ForEach(Array(listTasks.enumerated()), id: \.element.id) { index, task in
+                    let rowLayout = reorder.rowLayout(at: index, listTasks: listTasks, rowFrames: rowFrames)
+
                     TaskRowView(
                         task: task,
                         filter: filter,
@@ -79,20 +106,24 @@ struct CustomTaskListView: View {
                         isDragging: reorder.draggingTaskID == task.id,
                         isSettling: reorder.isSettling,
                         reorderOffset: reorder.draggingTaskID == task.id ? reorder.dragTranslation : 0,
-                        reorderShift: reorder.rowShift(at: index, listTasks: listTasks, rowFrames: rowFrames),
+                        reorderShift: rowLayout.shift,
                         bottomSpacing: index < listTasks.count - 1 ? rowSpacing : 0,
                         listCoordinateSpace: listCoordinateSpace,
                         onTap: { onEdit(task) },
                         onComplete: { commitRemoval { onComplete(task) } },
                         onRestore: { commitRemoval { onRestore(task) } },
                         onDelete: { commitRemoval { onDelete(task) } },
-                        onCollapseStarted: { freezeForRemoval() },
+                        onCollapseStarted: { pinForRemoval() },
                         onReorderDragChanged: { translation in
+                            guard displayPin?.reason != .removal else { return }
+                            if reorder.draggingTaskID == nil {
+                                displayPin = ListDisplayPin(tasks: listTasks, reason: .reorder)
+                            }
                             reorder.handleDragChanged(
                                 task: task,
                                 at: index,
                                 translation: translation,
-                                tasks: tasks,
+                                listTasks: listTasks,
                                 rowFrames: rowFrames,
                                 allowsReorder: allowsReorder
                             )
@@ -100,7 +131,7 @@ struct CustomTaskListView: View {
                         onReorderDragEnded: {
                             reorder.endDrag(
                                 task: task,
-                                tasks: tasks,
+                                listTasks: listTasks,
                                 rowFrames: rowFrames,
                                 allowsReorder: allowsReorder
                             )
@@ -114,7 +145,7 @@ struct CustomTaskListView: View {
                             )
                         }
                     }
-                    .zIndex(reorder.reorderZIndex(for: index, task: task, listTasks: listTasks, rowFrames: rowFrames))
+                    .zIndex(rowLayout.zIndex)
                 }
 
                 if showAddRow {
@@ -141,15 +172,19 @@ struct CustomTaskListView: View {
                 Spacer(minLength: 0)
             }
             .animation(.spring(response: 0.38, dampingFraction: 0.82), value: showAddRow)
-        .onChange(of: tasks.map(\.id)) { _, newIDs in
-            if let reorderSnapshot = reorder.snapshotTasks, reorderSnapshot.map(\.id) == newIDs {
-                reorder.clearSnapshot()
-            } else if let frozenTasks, frozenTasks.map(\.id) == newIDs {
-                self.frozenTasks = nil
-            } else if !reorder.isDragging, !reorder.isSettling, !isRemovingTask {
-                reorder.clearSnapshot()
-                frozenTasks = nil
-            }
+        .onChange(of: tasks.map(\.id)) { _, queryIDs in
+            syncDisplayPin(queryIDs: queryIDs)
+        }
+    }
+
+    private func syncDisplayPin(queryIDs: [UUID]) {
+        if let pin = displayPin, pin.ids == queryIDs {
+            displayPin = nil
+            return
+        }
+
+        if !reorder.isDragging, !reorder.isSettling, displayPin?.reason != .removal {
+            displayPin = nil
         }
     }
 
@@ -166,10 +201,9 @@ struct CustomTaskListView: View {
         }
     }
 
-    private func freezeForRemoval() {
-        guard frozenTasks == nil, reorder.snapshotTasks == nil else { return }
-        frozenTasks = tasks
-        isRemovingTask = true
+    private func pinForRemoval() {
+        guard displayPin == nil else { return }
+        displayPin = ListDisplayPin(tasks: tasks, reason: .removal)
     }
 
     private func commitRemoval(action: () -> Void) {
@@ -177,8 +211,7 @@ struct CustomTaskListView: View {
         transaction.disablesAnimations = true
         withTransaction(transaction) {
             action()
-            frozenTasks = nil
-            isRemovingTask = false
+            displayPin = nil
         }
     }
 }

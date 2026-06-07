@@ -9,30 +9,21 @@ final class TaskReorderCoordinator {
     private(set) var dragSourceIndex: Int?
     private(set) var dragTargetIndex: Int?
     private(set) var isSettling = false
-    private(set) var snapshotTasks: [Task]?
 
     var isDragging: Bool { draggingTaskID != nil }
-
-    func displayTasks(fallback: [Task]) -> [Task] {
-        snapshotTasks ?? fallback
-    }
-
-    func clearSnapshot() {
-        snapshotTasks = nil
-    }
+    var onSettledDisplayTasks: (([Task]?) -> Void)?
 
     func handleDragChanged(
         task: Task,
         at index: Int,
         translation: CGFloat,
-        tasks: [Task],
+        listTasks: [Task],
         rowFrames: [UUID: CGRect],
         allowsReorder: Bool
     ) {
         guard allowsReorder else { return }
 
         if draggingTaskID == nil {
-            snapshotTasks = tasks
             draggingTaskID = task.id
             dragSourceIndex = index
             dragTargetIndex = index
@@ -46,7 +37,6 @@ final class TaskReorderCoordinator {
             let draggedFrame = rowFrames[task.id]
         else { return }
 
-        let listTasks = displayTasks(fallback: tasks)
         let fingerY = draggedFrame.midY + translation
         let newTarget = insertionIndex(
             fingerY: fingerY,
@@ -64,12 +54,12 @@ final class TaskReorderCoordinator {
 
     func endDrag(
         task: Task,
-        tasks: [Task],
+        listTasks: [Task],
         rowFrames: [UUID: CGRect],
         allowsReorder: Bool
     ) {
         guard allowsReorder, draggingTaskID == task.id else {
-            snapshotTasks = nil
+            onSettledDisplayTasks?(nil)
             resetDragState()
             return
         }
@@ -78,23 +68,19 @@ final class TaskReorderCoordinator {
 
         guard
             let source = dragSourceIndex,
-            let target = dragTargetIndex
+            let target = dragTargetIndex,
+            source != target
         else {
             settle(reorderedTasks: nil, settleTranslation: 0)
             return
         }
 
-        let listTasks = displayTasks(fallback: tasks)
-        let settleTranslation = CGFloat(target - source) * rowDisplacement(
-            for: source,
+        let settleTranslation = settleTranslation(
+            from: source,
+            to: target,
             listTasks: listTasks,
             rowFrames: rowFrames
         )
-
-        guard source != target else {
-            settle(reorderedTasks: nil, settleTranslation: 0)
-            return
-        }
 
         var ordered = listTasks
         ordered.move(
@@ -105,35 +91,21 @@ final class TaskReorderCoordinator {
         settle(reorderedTasks: ordered, settleTranslation: settleTranslation)
     }
 
-    func rowShift(
+    func rowLayout(
         at index: Int,
         listTasks: [Task],
-        rowFrames: [UUID: CGRect],
-        target: Int? = nil
-    ) -> CGFloat {
-        guard
-            let source = dragSourceIndex,
-            let resolvedTarget = target ?? dragTargetIndex,
-            source != resolvedTarget,
-            draggingTaskID != listTasks[index].id,
-            let sourceFrame = rowFrames[listTasks[source].id]
-        else { return 0 }
-
-        let displacement = sourceFrame.height
-
-        if source < resolvedTarget, index > source, index <= resolvedTarget {
-            return -displacement
+        rowFrames: [UUID: CGRect]
+    ) -> (shift: CGFloat, zIndex: Double) {
+        let shift = rowShift(at: index, listTasks: listTasks, rowFrames: rowFrames)
+        let zIndex: Double
+        if draggingTaskID == listTasks[index].id {
+            zIndex = 2
+        } else if shift != 0 {
+            zIndex = 1
+        } else {
+            zIndex = 0
         }
-        if source > resolvedTarget, index >= resolvedTarget, index < source {
-            return displacement
-        }
-        return 0
-    }
-
-    func reorderZIndex(for index: Int, task: Task, listTasks: [Task], rowFrames: [UUID: CGRect]) -> Double {
-        if draggingTaskID == task.id { return 2 }
-        if rowShift(at: index, listTasks: listTasks, rowFrames: rowFrames) != 0 { return 1 }
-        return 0
+        return (shift, zIndex)
     }
 
     private func settle(reorderedTasks: [Task]?, settleTranslation: CGFloat) {
@@ -146,8 +118,10 @@ final class TaskReorderCoordinator {
             transaction.disablesAnimations = true
             withTransaction(transaction) {
                 if let reorderedTasks {
-                    self.snapshotTasks = reorderedTasks
                     TaskStore.applySortOrder(to: reorderedTasks)
+                    self.onSettledDisplayTasks?(reorderedTasks)
+                } else {
+                    self.onSettledDisplayTasks?(nil)
                 }
                 self.resetDragState()
                 self.isSettling = false
@@ -185,19 +159,57 @@ final class TaskReorderCoordinator {
         return target
     }
 
-    private func rowDisplacement(
-        for sourceIndex: Int,
+    private func rowShift(
+        at index: Int,
+        listTasks: [Task],
+        rowFrames: [UUID: CGRect],
+        target: Int? = nil
+    ) -> CGFloat {
+        guard
+            let source = dragSourceIndex,
+            let resolvedTarget = target ?? dragTargetIndex,
+            source != resolvedTarget,
+            draggingTaskID != listTasks[index].id
+        else { return 0 }
+
+        if source < resolvedTarget, index > source, index <= resolvedTarget {
+            return -rowGap(from: index - 1, to: index, listTasks: listTasks, rowFrames: rowFrames)
+        }
+        if source > resolvedTarget, index >= resolvedTarget, index < source {
+            return rowGap(from: index, to: index + 1, listTasks: listTasks, rowFrames: rowFrames)
+        }
+        return 0
+    }
+
+    private func settleTranslation(
+        from source: Int,
+        to target: Int,
         listTasks: [Task],
         rowFrames: [UUID: CGRect]
     ) -> CGFloat {
-        let taskID = listTasks[sourceIndex].id
-        if let frame = rowFrames[taskID] {
-            return frame.height
-        }
-        if let frame = rowFrames.values.first {
-            return frame.height
-        }
-        return 0
+        guard
+            let sourceFrame = frame(for: source, in: listTasks, rowFrames: rowFrames),
+            let targetFrame = frame(for: target, in: listTasks, rowFrames: rowFrames)
+        else { return 0 }
+        return targetFrame.minY - sourceFrame.minY
+    }
+
+    private func rowGap(
+        from lowerIndex: Int,
+        to upperIndex: Int,
+        listTasks: [Task],
+        rowFrames: [UUID: CGRect]
+    ) -> CGFloat {
+        guard
+            let lowerFrame = frame(for: lowerIndex, in: listTasks, rowFrames: rowFrames),
+            let upperFrame = frame(for: upperIndex, in: listTasks, rowFrames: rowFrames)
+        else { return 0 }
+        return upperFrame.minY - lowerFrame.minY
+    }
+
+    private func frame(for index: Int, in listTasks: [Task], rowFrames: [UUID: CGRect]) -> CGRect? {
+        guard listTasks.indices.contains(index) else { return nil }
+        return rowFrames[listTasks[index].id]
     }
 
     private func resetDragState() {
