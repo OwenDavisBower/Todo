@@ -97,6 +97,10 @@ struct ContentView: View {
                 onAddTask: { title in
                     _ = TaskStore.addTask(title: title, in: modelContext)
                     shouldAutofocusAddRow = false
+                },
+                onDismissAddRow: {
+                    isShowingAddRow = false
+                    shouldAutofocusAddRow = false
                 }
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)

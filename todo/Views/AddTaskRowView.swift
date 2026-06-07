@@ -3,6 +3,7 @@ import SwiftUI
 struct AddTaskRowView: View {
     var autofocus: Bool
     let onSubmit: (String) -> Void
+    var onDismissWhenEmpty: (() -> Void)? = nil
 
     @State private var title = ""
     @FocusState private var isFocused: Bool
@@ -15,9 +16,7 @@ struct AddTaskRowView: View {
 
     var body: some View {
         HStack(spacing: 14) {
-            Color.clear
-                .frame(width: 24, height: 36)
-                .accessibilityHidden(true)
+            addButton
 
             TextField(
                 "",
@@ -44,6 +43,23 @@ struct AddTaskRowView: View {
                 isFocused = true
             }
         }
+        .onChange(of: isFocused) { _, focused in
+            if !focused, trimmedTitle.isEmpty {
+                onDismissWhenEmpty?()
+            }
+        }
+    }
+
+    private var addButton: some View {
+        Button(action: submit) {
+            Image(systemName: "plus")
+                .font(.body.weight(.medium))
+                .foregroundStyle(AppTheme.sage)
+                .frame(width: 24, height: 36)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Add task")
     }
 
     private func submit() {

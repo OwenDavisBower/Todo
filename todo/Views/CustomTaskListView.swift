@@ -11,6 +11,7 @@ struct CustomTaskListView: View {
     let onRestore: (Task) -> Void
     let onDelete: (Task) -> Void
     let onAddTask: (String) -> Void
+    let onDismissAddRow: () -> Void
 
     @State private var draggingTaskID: UUID?
     @State private var dragTranslation: CGFloat = 0
@@ -41,7 +42,8 @@ struct CustomTaskListView: View {
                         .frame(maxWidth: .infinity, minHeight: viewport.size.height, alignment: .top)
                         .background(AppTheme.background)
                 }
-                .background(AppTheme.background)
+                .background(AppTheme.background.ignoresSafeArea())
+                .scrollContentBackground(.hidden)
                 .scrollDismissesKeyboard(.interactively)
                 .scrollDisabled(draggingTaskID != nil)
                 .coordinateSpace(name: listCoordinateSpace)
@@ -109,10 +111,15 @@ struct CustomTaskListView: View {
                     }
 
                     VStack(spacing: 0) {
-                        AddTaskRowView(autofocus: autofocusAddRow, onSubmit: onAddTask)
+                        AddTaskRowView(
+                            autofocus: autofocusAddRow,
+                            onSubmit: onAddTask,
+                            onDismissWhenEmpty: onDismissAddRow
+                        )
 
                         if keyboardHeight > 0 {
-                            Color.clear.frame(height: rowSpacing)
+                            AppTheme.background
+                                .frame(height: rowSpacing)
                         }
                     }
                     .id(addRowID)

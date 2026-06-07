@@ -76,7 +76,7 @@ enum TaskStore {
     }
 
     static func activeTasks(in context: ModelContext) -> [Task] {
-        var descriptor = FetchDescriptor<Task>(
+        let descriptor = FetchDescriptor<Task>(
             predicate: #Predicate { !$0.isCompleted },
             sortBy: [SortDescriptor(\.sortOrder)]
         )
@@ -84,7 +84,7 @@ enum TaskStore {
     }
 
     static func clearCompleted(in context: ModelContext) {
-        var descriptor = FetchDescriptor<Task>(
+        let descriptor = FetchDescriptor<Task>(
             predicate: #Predicate { $0.isCompleted }
         )
         guard let tasks = try? context.fetch(descriptor) else { return }
