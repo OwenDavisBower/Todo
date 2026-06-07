@@ -17,6 +17,7 @@ struct ContentView: View {
     @State private var isShowingAddRow = false
     @State private var shouldAutofocusAddRow = false
     @State private var editingTask: Task?
+    @State private var undo = TaskUndoController()
 
     var body: some View {
         NavigationStack {
@@ -40,7 +41,18 @@ struct ContentView: View {
                         .transition(.scale.combined(with: .opacity))
                 }
             }
+            .overlay(alignment: .bottom) {
+                if let offer = undo.offer {
+                    UndoToastView(message: offer.message) {
+                        undo.undo(in: modelContext)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, undoToastBottomPadding)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
             .animation(Self.addRowAnimation, value: isShowingAddRow)
+            .animation(Self.addRowAnimation, value: undo.offer != nil)
             .onChange(of: filter) { _, _ in
                 withAnimation(Self.addRowAnimation) {
                     isShowingAddRow = false
@@ -95,12 +107,20 @@ struct ContentView: View {
                 onEdit: { editingTask = $0 },
                 onComplete: { task in
                     TaskStore.complete(task)
+                    undo.present(message: "Task completed", action: .completion(taskID: task.id))
                 },
                 onRestore: { task in
+                    let completedAt = task.completedAt
                     TaskStore.uncomplete(task, in: modelContext)
+                    undo.present(
+                        message: "Moved to active",
+                        action: .restoration(taskID: task.id, completedAt: completedAt)
+                    )
                 },
                 onDelete: { task in
+                    let snapshot = TaskSnapshot(task)
                     TaskStore.delete(task, in: modelContext)
+                    undo.present(message: "Task deleted", action: .deletion(snapshot))
                 },
                 onAddTask: { title, dueDate in
                     _ = TaskStore.addTask(title: title, dueDate: dueDate, in: modelContext)
@@ -115,6 +135,10 @@ struct ContentView: View {
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+    }
+
+    private var undoToastBottomPadding: CGFloat {
+        filter == .active && !isShowingAddRow ? 88 : 20
     }
 
     private func count(for filter: TaskFilter) -> Int {
