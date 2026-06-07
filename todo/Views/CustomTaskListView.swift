@@ -109,8 +109,14 @@ struct CustomTaskListView: View {
                         Color.clear.frame(height: rowSpacing)
                     }
 
-                    AddTaskRowView(autofocus: autofocusAddRow, onSubmit: onAddTask)
-                        .id(addRowID)
+                    VStack(spacing: 0) {
+                        AddTaskRowView(autofocus: autofocusAddRow, onSubmit: onAddTask)
+
+                        if keyboardHeight > 0 {
+                            Color.clear.frame(height: rowSpacing)
+                        }
+                    }
+                    .id(addRowID)
                 }
             }
         .onChange(of: tasks.map(\.id)) { _, newIDs in
