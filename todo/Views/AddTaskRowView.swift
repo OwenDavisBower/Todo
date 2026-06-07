@@ -73,36 +73,12 @@ struct AddTaskRowView: View {
     }
 
     private var datePickerPopover: some View {
-        VStack(spacing: 12) {
-            DatePicker(
-                "Due",
-                selection: dueDateBinding,
-                displayedComponents: .date
-            )
-            .datePickerStyle(.graphical)
-            .tint(AppTheme.ink)
-            .labelsHidden()
-
-            if dueDate != nil {
-                Button("Remove date") {
-                    dueDate = nil
-                    isShowingDatePicker = false
-                }
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(AppTheme.sage)
-            }
+        CustomDatePickerView(selectedDate: $dueDate) {
+            dueDate = nil
+            isShowingDatePicker = false
         }
-        .padding()
-        .frame(width: 320)
         .fixedSize()
         .presentationCompactAdaptation(.popover)
-    }
-
-    private var dueDateBinding: Binding<Date> {
-        Binding(
-            get: { dueDate ?? Calendar.current.startOfDay(for: Date()) },
-            set: { dueDate = Calendar.current.startOfDay(for: $0) }
-        )
     }
 
     @ViewBuilder
