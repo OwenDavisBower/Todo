@@ -99,6 +99,7 @@ struct ContentView: View {
                     shouldAutofocusAddRow = false
                 }
             )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 

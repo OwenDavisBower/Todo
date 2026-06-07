@@ -23,15 +23,53 @@ struct CustomTaskListView: View {
     @State private var dragStartHaptic = UIImpactFeedbackGenerator(style: .medium)
     @State private var moveHaptic = UIImpactFeedbackGenerator(style: .soft)
     @State private var dragEndHaptic = UIImpactFeedbackGenerator(style: .light)
+    @State private var keyboardHeight: CGFloat = 0
 
     private let rowSpacing: CGFloat = 12
     private let listCoordinateSpace = "taskList"
+    private let addRowID = "addTaskRow"
 
     private var listTasks: [Task] { frozenTasks ?? tasks }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 0) {
+        GeometryReader { viewport in
+            ScrollViewReader { proxy in
+                ScrollView {
+                    listContent
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 16)
+                        .padding(.bottom, showAddRow ? keyboardHeight : 0)
+                        .frame(maxWidth: .infinity, minHeight: viewport.size.height, alignment: .top)
+                        .background(AppTheme.background)
+                }
+                .background(AppTheme.background)
+                .scrollDismissesKeyboard(.interactively)
+                .scrollDisabled(draggingTaskID != nil)
+                .coordinateSpace(name: listCoordinateSpace)
+                .onPreferenceChange(RowFrameKey.self) { rowFrames = $0 }
+                .onChange(of: showAddRow) { _, isShowing in
+                    if isShowing {
+                        scrollToAddRow(using: proxy)
+                    }
+                }
+                .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { notification in
+                    guard
+                        let frame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect
+                    else { return }
+                    keyboardHeight = frame.height
+                    if showAddRow {
+                        scrollToAddRow(using: proxy)
+                    }
+                }
+                .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+                    keyboardHeight = 0
+                }
+            }
+        }
+    }
+
+    private var listContent: some View {
+        VStack(spacing: 0) {
                 ForEach(Array(listTasks.enumerated()), id: \.element.id) { index, task in
                     TaskRowView(
                         task: task,
@@ -72,20 +110,27 @@ struct CustomTaskListView: View {
                     }
 
                     AddTaskRowView(autofocus: autofocusAddRow, onSubmit: onAddTask)
+                        .id(addRowID)
                 }
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 16)
-        }
-        .scrollDismissesKeyboard(.interactively)
-        .scrollDisabled(draggingTaskID != nil)
-        .coordinateSpace(name: listCoordinateSpace)
-        .onPreferenceChange(RowFrameKey.self) { rowFrames = $0 }
         .onChange(of: tasks.map(\.id)) { _, newIDs in
             if let frozenTasks, frozenTasks.map(\.id) == newIDs {
                 self.frozenTasks = nil
             } else if draggingTaskID == nil, !isSettlingReorder, !isRemovingTask {
                 frozenTasks = nil
+            }
+        }
+    }
+
+    private func scrollToAddRow(using proxy: ScrollViewProxy) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            withAnimation(.easeOut(duration: 0.25)) {
+                proxy.scrollTo(addRowID, anchor: .bottom)
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                withAnimation(.easeOut(duration: 0.2)) {
+                    proxy.scrollTo(addRowID, anchor: .bottom)
+                }
             }
         }
     }
