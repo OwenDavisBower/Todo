@@ -212,8 +212,8 @@ private extension Calendar {
 
 #Preview {
     @Previewable @State var date: Date? = Date()
-    CustomDatePickerView(selectedDate: $date) {
+    CustomDatePickerView(selectedDate: $date, onRemove: {
         date = nil
-    }
+    })
     .themedBackground()
 }
