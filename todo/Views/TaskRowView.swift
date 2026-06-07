@@ -26,6 +26,7 @@ struct TaskRowView: View {
     @State private var rowHeight: CGFloat?
 
     private let actionThreshold: CGFloat = 80
+    private let horizontalSwipeActivationThreshold: CGFloat = 24
     private let cardCornerRadius: CGFloat = 18
 
     private var shouldAnimateReorder: Bool {
@@ -209,14 +210,15 @@ struct TaskRowView: View {
     }
 
     private var horizontalDragGesture: some Gesture {
-        DragGesture(minimumDistance: 12)
+        DragGesture(minimumDistance: horizontalSwipeActivationThreshold)
             .onChanged { value in
                 guard !isPerformingAction, !isDragging, !isReorderDragging else { return }
 
                 if !isHorizontalSwipe {
                     let width = abs(value.translation.width)
                     let height = abs(value.translation.height)
-                    guard width > 8, width > height else { return }
+                    guard width >= horizontalSwipeActivationThreshold,
+                          width > height * 1.25 else { return }
                     isHorizontalSwipe = true
                 }
 
