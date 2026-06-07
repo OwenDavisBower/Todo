@@ -16,7 +16,9 @@ struct AddTaskRowView: View {
 
     var body: some View {
         HStack(spacing: 14) {
-            addButton
+            Color.clear
+                .frame(width: 24, height: 36)
+                .accessibilityHidden(true)
 
             TextField(
                 "",
@@ -29,6 +31,8 @@ struct AddTaskRowView: View {
             .submitLabel(.done)
             .onSubmit(submit)
             .frame(maxWidth: .infinity, alignment: .leading)
+
+            addButton
         }
         .padding(.leading, 14)
         .padding(.trailing, 18)
@@ -52,11 +56,10 @@ struct AddTaskRowView: View {
 
     private var addButton: some View {
         Button(action: submit) {
-            Image(systemName: "plus")
-                .font(.body.weight(.medium))
-                .foregroundStyle(AppTheme.sage)
-                .frame(width: 24, height: 36)
-                .contentShape(Rectangle())
+            Image(systemName: "plus.circle.fill")
+                .font(.title2)
+                .symbolRenderingMode(.palette)
+                .foregroundStyle(AppTheme.blush, AppTheme.sage)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Add task")
