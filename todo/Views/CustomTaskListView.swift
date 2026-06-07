@@ -124,6 +124,8 @@ struct CustomTaskListView: View {
                     }
                     .id(addRowID)
                 }
+
+                Spacer(minLength: 0)
             }
         .onChange(of: tasks.map(\.id)) { _, newIDs in
             if let frozenTasks, frozenTasks.map(\.id) == newIDs {

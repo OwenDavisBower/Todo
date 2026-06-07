@@ -67,6 +67,7 @@ struct TaskRowView: View {
                 Color.clear.frame(height: bottomSpacing)
             }
         }
+        .fixedSize(horizontal: false, vertical: true)
         .background {
             GeometryReader { geometry in
                 Color.clear.preference(key: RowHeightKey.self, value: geometry.size.height)
