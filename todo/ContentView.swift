@@ -107,20 +107,14 @@ struct ContentView: View {
                 onEdit: { editingTask = $0 },
                 onComplete: { task in
                     TaskStore.complete(task)
-                    undo.present(message: "Task completed", action: .completion(taskID: task.id))
                 },
                 onRestore: { task in
-                    let completedAt = task.completedAt
                     TaskStore.uncomplete(task, in: modelContext)
-                    undo.present(
-                        message: "Moved to active",
-                        action: .restoration(taskID: task.id, completedAt: completedAt)
-                    )
                 },
                 onDelete: { task in
                     let snapshot = TaskSnapshot(task)
                     TaskStore.delete(task, in: modelContext)
-                    undo.present(message: "Task deleted", action: .deletion(snapshot))
+                    undo.present(message: "Task deleted", snapshot: snapshot)
                 },
                 onAddTask: { title, dueDate in
                     _ = TaskStore.addTask(title: title, dueDate: dueDate, in: modelContext)

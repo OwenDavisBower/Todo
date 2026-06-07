@@ -93,12 +93,6 @@ enum TaskStore {
         }
     }
 
-    static func undoCompletion(taskID: UUID, in context: ModelContext) {
-        guard let task = findTask(id: taskID, in: context) else { return }
-        task.isCompleted = false
-        task.completedAt = nil
-    }
-
     static func restore(_ snapshot: TaskSnapshot, in context: ModelContext) {
         let task = Task(
             title: snapshot.title,
@@ -110,11 +104,5 @@ enum TaskStore {
         task.createdAt = snapshot.createdAt
         task.completedAt = snapshot.completedAt
         context.insert(task)
-    }
-
-    static func undoRestoration(taskID: UUID, completedAt: Date?, in context: ModelContext) {
-        guard let task = findTask(id: taskID, in: context) else { return }
-        task.isCompleted = true
-        task.completedAt = completedAt ?? Date()
     }
 }
