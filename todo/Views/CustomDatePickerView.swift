@@ -3,6 +3,7 @@ import SwiftUI
 struct CustomDatePickerView: View {
     @Binding var selectedDate: Date?
     var onRemove: (() -> Void)? = nil
+    var onDismiss: (() -> Void)? = nil
 
     @State private var displayedMonth: Date
 
@@ -23,9 +24,14 @@ struct CustomDatePickerView: View {
         QuickPick(id: 3, label: "1 week", dayOffset: 7),
     ]
 
-    init(selectedDate: Binding<Date?>, onRemove: (() -> Void)? = nil) {
+    init(
+        selectedDate: Binding<Date?>,
+        onRemove: (() -> Void)? = nil,
+        onDismiss: (() -> Void)? = nil
+    ) {
         _selectedDate = selectedDate
         self.onRemove = onRemove
+        self.onDismiss = onDismiss
         let calendar = Calendar.current
         let anchor = selectedDate.wrappedValue ?? Date()
         _displayedMonth = State(initialValue: calendar.startOfMonth(for: anchor))
@@ -42,7 +48,10 @@ struct CustomDatePickerView: View {
             dayGrid
 
             if selectedDate != nil, let onRemove {
-                Button("Remove date", action: onRemove)
+                Button("Remove date") {
+                    onRemove()
+                    onDismiss?()
+                }
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(AppTheme.sage)
             }
@@ -135,6 +144,7 @@ struct CustomDatePickerView: View {
 
         return Button {
             selectedDate = calendar.startOfDay(for: date)
+            onDismiss?()
         } label: {
             Text("\(calendar.component(.day, from: date))")
                 .font(.subheadline.weight(isSelected ? .semibold : .regular))
@@ -173,6 +183,7 @@ struct CustomDatePickerView: View {
         if let selectedDate {
             displayedMonth = calendar.startOfMonth(for: selectedDate)
         }
+        onDismiss?()
     }
 
     private func shiftMonth(by value: Int) {

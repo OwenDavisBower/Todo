@@ -73,10 +73,11 @@ struct AddTaskRowView: View {
     }
 
     private var datePickerPopover: some View {
-        CustomDatePickerView(selectedDate: $dueDate) {
-            dueDate = nil
-            isShowingDatePicker = false
-        }
+        CustomDatePickerView(
+            selectedDate: $dueDate,
+            onRemove: { dueDate = nil },
+            onDismiss: { isShowingDatePicker = false }
+        )
         .fixedSize()
         .presentationCompactAdaptation(.popover)
     }
