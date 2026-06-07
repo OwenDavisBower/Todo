@@ -38,7 +38,6 @@ struct CustomTaskListView: View {
                     listContent
                         .padding(.horizontal, 20)
                         .padding(.vertical, 16)
-                        .padding(.bottom, showAddRow ? keyboardHeight : 0)
                         .frame(maxWidth: .infinity, minHeight: viewport.size.height, alignment: .top)
                         .background(AppTheme.background)
                 }
