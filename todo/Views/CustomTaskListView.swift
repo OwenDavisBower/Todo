@@ -15,6 +15,24 @@ private struct ListDisplayPin {
         self.ids = tasks.map(\.id)
         self.reason = reason
     }
+
+    static func afterReorderSettlement(_ ordered: [Task]?, replacing current: ListDisplayPin?) -> ListDisplayPin? {
+        if let ordered {
+            return ListDisplayPin(tasks: ordered, reason: .reorder)
+        }
+        if current?.reason == .reorder {
+            return nil
+        }
+        return current
+    }
+
+    static func matchesTasks(_ tasks: [Task], ids: [UUID]) -> Bool {
+        guard tasks.count == ids.count else { return false }
+        for (task, id) in zip(tasks, ids) {
+            if task.id != id { return false }
+        }
+        return true
+    }
 }
 
 struct CustomTaskListView: View {
@@ -56,7 +74,7 @@ struct CustomTaskListView: View {
                 .background(AppTheme.background.ignoresSafeArea())
                 .scrollContentBackground(.hidden)
                 .scrollDismissesKeyboard(.interactively)
-                .scrollDisabled(reorder.isDragging)
+                .scrollDisabled(reorder.isInteractionActive)
                 .coordinateSpace(name: listCoordinateSpace)
                 .onPreferenceChange(RowFrameKey.self) { rowFrames = $0 }
                 .onChange(of: showAddRow) { _, isShowing in
@@ -85,11 +103,7 @@ struct CustomTaskListView: View {
         }
         .onAppear {
             reorder.onSettledDisplayTasks = { ordered in
-                if let ordered {
-                    displayPin = ListDisplayPin(tasks: ordered, reason: .reorder)
-                } else if displayPin?.reason == .reorder {
-                    displayPin = nil
-                }
+                displayPin = ListDisplayPin.afterReorderSettlement(ordered, replacing: displayPin)
             }
         }
     }
@@ -97,16 +111,21 @@ struct CustomTaskListView: View {
     private var listContent: some View {
         VStack(spacing: 0) {
                 ForEach(Array(listTasks.enumerated()), id: \.element.id) { index, task in
-                    let rowLayout = reorder.rowLayout(at: index, listTasks: listTasks, rowFrames: rowFrames)
+                    let rowPresentation = reorder.presentation(
+                        for: task,
+                        at: index,
+                        listTasks: listTasks,
+                        rowFrames: rowFrames
+                    )
 
                     TaskRowView(
                         task: task,
                         filter: filter,
                         showDragHandle: allowsReorder,
-                        isDragging: reorder.draggingTaskID == task.id,
-                        isSettling: reorder.isSettling,
-                        reorderOffset: reorder.draggingTaskID == task.id ? reorder.dragTranslation : 0,
-                        reorderShift: rowLayout.shift,
+                        isDragging: rowPresentation.isDragging,
+                        isSettling: rowPresentation.isSettling,
+                        reorderOffset: rowPresentation.offset,
+                        reorderShift: rowPresentation.shift,
                         bottomSpacing: index < listTasks.count - 1 ? rowSpacing : 0,
                         listCoordinateSpace: listCoordinateSpace,
                         onTap: { onEdit(task) },
@@ -116,7 +135,7 @@ struct CustomTaskListView: View {
                         onCollapseStarted: { pinForRemoval() },
                         onReorderDragChanged: { translation in
                             guard displayPin?.reason != .removal else { return }
-                            if reorder.draggingTaskID == nil {
+                            if !reorder.isDragging {
                                 displayPin = ListDisplayPin(tasks: listTasks, reason: .reorder)
                             }
                             reorder.handleDragChanged(
@@ -145,7 +164,7 @@ struct CustomTaskListView: View {
                             )
                         }
                     }
-                    .zIndex(rowLayout.zIndex)
+                    .zIndex(rowPresentation.zIndex)
                 }
 
                 if showAddRow {
@@ -172,18 +191,20 @@ struct CustomTaskListView: View {
                 Spacer(minLength: 0)
             }
             .animation(.spring(response: 0.38, dampingFraction: 0.82), value: showAddRow)
-        .onChange(of: tasks.map(\.id)) { _, queryIDs in
-            syncDisplayPin(queryIDs: queryIDs)
+        .onChange(of: tasks) { _, queryTasks in
+            syncDisplayPin(with: queryTasks)
         }
     }
 
-    private func syncDisplayPin(queryIDs: [UUID]) {
-        if let pin = displayPin, pin.ids == queryIDs {
+    private func syncDisplayPin(with queryTasks: [Task]) {
+        guard let pin = displayPin else { return }
+
+        if ListDisplayPin.matchesTasks(queryTasks, ids: pin.ids) {
             displayPin = nil
             return
         }
 
-        if !reorder.isDragging, !reorder.isSettling, displayPin?.reason != .removal {
+        if !reorder.isInteractionActive, pin.reason != .removal {
             displayPin = nil
         }
     }

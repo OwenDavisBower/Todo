@@ -1,6 +1,14 @@
 import SwiftUI
 import UIKit
 
+struct ReorderRowPresentation {
+    let isDragging: Bool
+    let isSettling: Bool
+    let offset: CGFloat
+    let shift: CGFloat
+    let zIndex: Double
+}
+
 @Observable
 @MainActor
 final class TaskReorderCoordinator {
@@ -10,8 +18,31 @@ final class TaskReorderCoordinator {
     private(set) var dragTargetIndex: Int?
     private(set) var isSettling = false
 
+    private var lightImpact = UIImpactFeedbackGenerator(style: .light)
+    private var mediumImpact = UIImpactFeedbackGenerator(style: .medium)
+    private var softImpact = UIImpactFeedbackGenerator(style: .soft)
+
     var isDragging: Bool { draggingTaskID != nil }
+    var isInteractionActive: Bool { isDragging || isSettling }
     var onSettledDisplayTasks: (([Task]?) -> Void)?
+
+    func presentation(
+        for task: Task,
+        at index: Int,
+        listTasks: [Task],
+        rowFrames: [UUID: CGRect]
+    ) -> ReorderRowPresentation {
+        let isDraggingRow = draggingTaskID == task.id
+        let shift = rowShift(at: index, listTasks: listTasks, rowFrames: rowFrames)
+        let zIndex: Double = isDraggingRow ? 2 : (shift != 0 ? 1 : 0)
+        return ReorderRowPresentation(
+            isDragging: isDraggingRow,
+            isSettling: isSettling,
+            offset: isDraggingRow ? dragTranslation : 0,
+            shift: shift,
+            zIndex: zIndex
+        )
+    }
 
     func handleDragChanged(
         task: Task,
@@ -59,53 +90,38 @@ final class TaskReorderCoordinator {
         allowsReorder: Bool
     ) {
         guard allowsReorder, draggingTaskID == task.id else {
-            onSettledDisplayTasks?(nil)
-            resetDragState()
+            cancelDrag()
             return
         }
 
         defer { impact(.light) }
 
-        guard
+        let reorderedTasks: [Task]?
+        let finalTranslation: CGFloat
+
+        if
             let source = dragSourceIndex,
             let target = dragTargetIndex,
             source != target
-        else {
-            settle(reorderedTasks: nil, settleTranslation: 0)
-            return
-        }
-
-        let settleTranslation = settleTranslation(
-            from: source,
-            to: target,
-            listTasks: listTasks,
-            rowFrames: rowFrames
-        )
-
-        var ordered = listTasks
-        ordered.move(
-            fromOffsets: IndexSet(integer: source),
-            toOffset: target > source ? target + 1 : target
-        )
-
-        settle(reorderedTasks: ordered, settleTranslation: settleTranslation)
-    }
-
-    func rowLayout(
-        at index: Int,
-        listTasks: [Task],
-        rowFrames: [UUID: CGRect]
-    ) -> (shift: CGFloat, zIndex: Double) {
-        let shift = rowShift(at: index, listTasks: listTasks, rowFrames: rowFrames)
-        let zIndex: Double
-        if draggingTaskID == listTasks[index].id {
-            zIndex = 2
-        } else if shift != 0 {
-            zIndex = 1
+        {
+            finalTranslation = settleTranslation(
+                from: source,
+                to: target,
+                listTasks: listTasks,
+                rowFrames: rowFrames
+            )
+            var ordered = listTasks
+            ordered.move(
+                fromOffsets: IndexSet(integer: source),
+                toOffset: target > source ? target + 1 : target
+            )
+            reorderedTasks = ordered
         } else {
-            zIndex = 0
+            reorderedTasks = nil
+            finalTranslation = 0
         }
-        return (shift, zIndex)
+
+        settle(reorderedTasks: reorderedTasks, settleTranslation: finalTranslation)
     }
 
     private func settle(reorderedTasks: [Task]?, settleTranslation: CGFloat) {
@@ -127,6 +143,11 @@ final class TaskReorderCoordinator {
                 self.isSettling = false
             }
         }
+    }
+
+    private func cancelDrag() {
+        onSettledDisplayTasks?(nil)
+        resetDragState()
     }
 
     private func insertionIndex(
@@ -220,7 +241,14 @@ final class TaskReorderCoordinator {
     }
 
     private func impact(_ style: UIImpactFeedbackGenerator.FeedbackStyle) {
-        let generator = UIImpactFeedbackGenerator(style: style)
+        let generator: UIImpactFeedbackGenerator
+        switch style {
+        case .light: generator = lightImpact
+        case .medium: generator = mediumImpact
+        case .soft: generator = softImpact
+        default:
+            generator = UIImpactFeedbackGenerator(style: style)
+        }
         generator.prepare()
         generator.impactOccurred()
     }
