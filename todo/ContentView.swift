@@ -94,8 +94,8 @@ struct ContentView: View {
                 onDelete: { task in
                     TaskStore.delete(task, in: modelContext)
                 },
-                onAddTask: { title in
-                    _ = TaskStore.addTask(title: title, in: modelContext)
+                onAddTask: { title, dueDate in
+                    _ = TaskStore.addTask(title: title, dueDate: dueDate, in: modelContext)
                     shouldAutofocusAddRow = false
                 },
                 onDismissAddRow: {

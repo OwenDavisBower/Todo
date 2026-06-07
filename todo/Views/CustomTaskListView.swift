@@ -10,7 +10,7 @@ struct CustomTaskListView: View {
     let onComplete: (Task) -> Void
     let onRestore: (Task) -> Void
     let onDelete: (Task) -> Void
-    let onAddTask: (String) -> Void
+    let onAddTask: (String, Date?) -> Void
     let onDismissAddRow: () -> Void
 
     @State private var draggingTaskID: UUID?
